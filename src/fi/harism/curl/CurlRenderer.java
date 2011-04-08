@@ -18,7 +18,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	private CurlMesh mCurlMesh;
 	
 	public CurlRenderer() {
-		mCurlMesh = new CurlMesh(0.0f, 0.5f, 1.0f, -0.5f, 20);
+		mCurlMesh = new CurlMesh(0.0f, 0.5f, 1.0f, -0.5f, 10);
 		mCurlMesh.curl(0, 0, 0, 0);
 	}
 

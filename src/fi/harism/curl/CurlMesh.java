@@ -93,6 +93,17 @@ public class CurlMesh {
 	public synchronized void curl(float x1, float y1, float x2, float y2) {
 		
 		float theta = (y2-y1) / (x1-x2);
+		float mx = ((x1 - x2) / 2.0f) + x2;
+		float my = ((y1 - y2) / 2.0f) + y2;
+		
+		float limX = mx + (0.5f - my) * theta;
+		if (limX < 0) {
+			mx -= limX;
+		}
+		limX = mx + (-0.5f - my) * theta;
+		if (limX < 0) {
+			mx -= limX;
+		}
 		
 		mHelperVertices.position(0);
 		
@@ -115,9 +126,7 @@ public class CurlMesh {
 		mHelperVertices.put(1.0f);
 		mHelperVertices.put(x1 + ((-1.0f - y1) * theta));
 		mHelperVertices.put(-1.0f);
-		
-		float mx = ((x1 - x2) / 2.0f) + x2;
-		float my = ((y1 - y2) / 2.0f) + y2;
+				
 		mHelperVertices.put(mx + ((1.0f - my)* theta));
 		mHelperVertices.put(1.0f);
 		mHelperVertices.put(mx + ((-1.0f - my) * theta));
@@ -183,7 +192,6 @@ public class CurlMesh {
 		
 		gl.glEnable(GL10.GL_TEXTURE_2D);
 		gl.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-		//gl.glFrontFace(GL10.GL_CCW);
 		gl.glDrawElements(GL10.GL_TRIANGLES, mTriangleIndicesCount, GL10.GL_UNSIGNED_SHORT, mTriangleIndices);
 		gl.glDisable(GL10.GL_TEXTURE_2D);
 		
@@ -194,8 +202,8 @@ public class CurlMesh {
 		gl.glEnable(GL10.GL_LINE_SMOOTH);
 
 		gl.glColor4f(0.5f, 0.5f, 1.0f, 1.0f);
-		//gl.glDrawElements(GL10.GL_LINES, mLineIndicesCount, GL10.GL_UNSIGNED_SHORT,
-		//		mLineIndices);
+		gl.glDrawElements(GL10.GL_LINES, mLineIndicesCount, GL10.GL_UNSIGNED_SHORT,
+				mLineIndices);
 
 		gl.glColor4f(1.0f, 0.5f, 0.5f, 1.0f);
 		gl.glVertexPointer(2, GL10.GL_FLOAT, 0, mHelperVertices);
