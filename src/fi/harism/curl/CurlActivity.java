@@ -5,6 +5,11 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 
+/**
+ * Holder for Activity.
+ * 
+ * @author harism
+ */
 public class CurlActivity extends Activity {
 	
 	private CurlView mCurlView;
@@ -13,15 +18,7 @@ public class CurlActivity extends Activity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
-        mCurlView = (CurlView) findViewById(R.id.curl);
-        
-        Button renderButton = (Button) findViewById(R.id.render_button);
-        renderButton.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View arg0) {
-				mCurlView.requestRender();
-			}
-		});
+        mCurlView = (CurlView) findViewById(R.id.curl);        
     }
     
     @Override

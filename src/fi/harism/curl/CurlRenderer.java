@@ -57,7 +57,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	}
 	@Override
 	public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-		gl.glClearColor(0.5f,0.0f, 07.f, 1.0f);
+		gl.glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 		gl.glShadeModel(GL10.GL_SMOOTH);
 		gl.glClearDepthf(1.0f);
 		gl.glEnable(GL10.GL_DEPTH_TEST);
