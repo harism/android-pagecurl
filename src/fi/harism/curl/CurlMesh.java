@@ -23,7 +23,7 @@ public class CurlMesh {
 
 	public CurlMesh(float x1, float y1, float x2, float y2, int c) {
 		
-		ByteBuffer hvbb = ByteBuffer.allocateDirect(5 * 2 * 2 * 4);
+		ByteBuffer hvbb = ByteBuffer.allocateDirect(6 * 2 * 2 * 4);
 		hvbb.order(ByteOrder.nativeOrder());
 		mHelperVertices = hvbb.asFloatBuffer();
 
@@ -92,17 +92,27 @@ public class CurlMesh {
 
 	public synchronized void curl(float x1, float y1, float x2, float y2) {
 		
-		float theta = (y2-y1) / (x1-x2);
-		float mx = ((x1 - x2) / 2.0f) + x2;
-		float my = ((y1 - y2) / 2.0f) + y2;
+		double theta = (y2-y1) / (x1-x2);
 		
-		float limX = mx + (0.5f - my) * theta;
-		if (limX < 0) {
-			mx -= limX;
-		}
-		limX = mx + (-0.5f - my) * theta;
-		if (limX < 0) {
-			mx -= limX;
+		double radius = 1.0f;
+		radius *= Math.min(1.0f, x2 - -1.0f);
+		double curlLen = radius * Math.PI;
+		double cx = (x1 - x2);
+		double cy = (y1 - y2);
+		double cLen = Math.sqrt(cx * cx + cy * cy);
+		if (cLen < curlLen) {
+			// TODO: This does not work.
+			double r = (Math.PI / 2) - ((cLen / curlLen) * Math.PI);
+			double x = radius * Math.cos(r);
+			double cLen2 = -x;
+			cLen2 = (cLen2 / 2) / cLen;
+			cx = x2 + (cx * cLen2);
+			cy = y2 + (cy * cLen2);
+		} else {
+			double cLen2 = cLen - (Math.PI * radius);
+			cLen2 = (cLen2 / 2) / cLen;
+			cx = x2 + (cx * cLen2);
+			cy = y2 + (cy * cLen2);
 		}
 		
 		mHelperVertices.position(0);
@@ -117,19 +127,19 @@ public class CurlMesh {
 		mHelperVertices.put(1.0f);
 		mHelperVertices.put(y2);
 		
-		mHelperVertices.put(x2 + ((1.0f - y2) * theta));
+		mHelperVertices.put((float)(x2 + ((1.0f - y2) * theta)));
 		mHelperVertices.put(1.0f);
-		mHelperVertices.put(x2 + ((-1.0f - y2) * theta));
+		mHelperVertices.put((float)(x2 + ((-1.0f - y2) * theta)));
 		mHelperVertices.put(-1.0f);
 		
-		mHelperVertices.put(x1 + ((1.0f - y1)* theta));
+		mHelperVertices.put((float)(x1 + ((1.0f - y1)* theta)));
 		mHelperVertices.put(1.0f);
-		mHelperVertices.put(x1 + ((-1.0f - y1) * theta));
+		mHelperVertices.put((float)(x1 + ((-1.0f - y1) * theta)));
 		mHelperVertices.put(-1.0f);
 				
-		mHelperVertices.put(mx + ((1.0f - my)* theta));
+		mHelperVertices.put((float)(cx + ((1.0f - cy)* theta)));
 		mHelperVertices.put(1.0f);
-		mHelperVertices.put(mx + ((-1.0f - my) * theta));
+		mHelperVertices.put((float)(cx + ((-1.0f - cy) * theta)));
 		mHelperVertices.put(-1.0f);
 		
 		mHelperVertices.position(0);
@@ -141,23 +151,33 @@ public class CurlMesh {
 			double y = mVertices.get();
 			double z = 0.0f;
 			
-			double xx0 = mx + (y - my) * theta;
-			double xx1 = x - xx0;
+			double curlX = cx + (y - cy) * theta;
 			
-			double ny = x2 - x1;
-			double nx = y1 - y2;
-			
-			double len = Math.sqrt(nx*nx + ny*ny);
-			nx *= 1 / len;
-			ny *= 1 / len;
-			
-			double dotp = (xx1*nx);
-			if (x > xx0) {
-				x = xx0 - xx1 + 2*nx*dotp;
-				y = y + 2*ny*dotp;
-				z = 0.1f;
+			if (x > curlX) {
+				double rotZ = -Math.atan(theta);
+				double pX = (x - curlX) * Math.cos(rotZ);
+				double pY = (x - curlX) * Math.sin(rotZ);
+								
+				if (pX < curlLen) {
+					double rotY = Math.PI / 2;
+					rotY -= Math.PI * (pX / curlLen);
+					double rX = radius * Math.cos(rotY);
+					double rZ = radius * (-Math.sin(rotY));				
+					pX = rX;
+					z = radius + rZ;
+				} else {
+					pX -= curlLen;
+					pX = -pX;
+					z = radius * 2;
+				}
+				
+				double fX = (pX * Math.cos(-rotZ)) - (pY * Math.sin(-rotZ));
+				double fY = (pX * Math.sin(-rotZ)) + (pY * Math.cos(-rotZ));
+				
+				x = curlX + fX;
+				y -= fY;
 			}
-
+			
 			mCurledVertices.put((float) x);
 			mCurledVertices.put((float) y);
 			mCurledVertices.put((float) z);
@@ -192,8 +212,24 @@ public class CurlMesh {
 		
 		gl.glEnable(GL10.GL_TEXTURE_2D);
 		gl.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+		
+		// TODO: Calculate normals.
+		//gl.glEnable(GL10.GL_LIGHTING);
+		//gl.glEnable(GL10.GL_LIGHT0);
+		//float light0Ambient[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+		//gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_AMBIENT, light0Ambient, 0);
+		//float light0Diffuse[] = { 0.5f, 0.5f, 0.5f, 1.0f };
+		//gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_DIFFUSE, light0Diffuse, 0);
+		//float light0Specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+		//gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_SPECULAR, light0Specular, 0);
+		//float light0Position[] = { 0f, 0f, 100f, 0f };
+		//gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_POSITION, light0Position, 0);
+		
 		gl.glDrawElements(GL10.GL_TRIANGLES, mTriangleIndicesCount, GL10.GL_UNSIGNED_SHORT, mTriangleIndices);
 		gl.glDisable(GL10.GL_TEXTURE_2D);
+		
+		//gl.glDisable(GL10.GL_LIGHTING);
+		//gl.glDisable(GL10.GL_LIGHT0);
 		
 		gl.glDisableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
 
