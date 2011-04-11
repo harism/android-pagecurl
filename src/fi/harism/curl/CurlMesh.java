@@ -94,7 +94,7 @@ public class CurlMesh {
 		
 		double theta = (y2-y1) / (x1-x2);
 		
-		double radius = 1.0f;
+		double radius = 0.3f;
 		radius *= Math.min(1.0f, x2 - -1.0f);
 		double curlLen = radius * Math.PI;
 		double cx = (x1 - x2);
