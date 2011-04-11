@@ -356,6 +356,9 @@ public class CurlMesh {
 		gl.glEnableClientState(GL10.GL_NORMAL_ARRAY);
 		gl.glNormalPointer(GL10.GL_FLOAT, 0, mNormals);
 		
+		gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
+		gl.glEnable(GL10.GL_BLEND);
+		
 		gl.glEnable(GL10.GL_TEXTURE_2D);
 		gl.glDrawElements(GL10.GL_TRIANGLE_STRIP, mTriangleIndicesCount,
 				GL10.GL_UNSIGNED_SHORT, mTriangleIndices);

@@ -63,7 +63,7 @@ public class CurlView extends GLSurfaceView {
 		Drawable d = getResources().getDrawable(R.drawable.obama);
 		d.setBounds(0, 0, w, h);
 		Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-		b.eraseColor(0xFFFFFFFF);
+		b.eraseColor(0x00000000);
 		Canvas c = new Canvas(b);
 		
 		Rect r = c.getClipBounds();
