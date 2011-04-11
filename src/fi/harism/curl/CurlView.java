@@ -3,7 +3,9 @@ package fi.harism.curl;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.graphics.PointF;
+import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
@@ -58,11 +60,21 @@ public class CurlView extends GLSurfaceView {
 		super.onSizeChanged(w, h, ow, oh);
 		
 		// Create Bitmap for renderer.
-		Drawable d = getResources().getDrawable(R.drawable.world);
+		Drawable d = getResources().getDrawable(R.drawable.obama);
 		d.setBounds(0, 0, w, h);
 		Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-		b.eraseColor(0x00000000);
+		b.eraseColor(0xFFFFFFFF);
 		Canvas c = new Canvas(b);
+		
+		Rect r = c.getClipBounds();
+		Paint p = new Paint();
+		p.setColor(0x80404040);
+		c.drawRect(r, p);
+		r.left += 2;
+		r.top += 2;
+		r.right -= 2;
+		r.bottom -= 2;
+		d.setBounds(r);		
 		d.draw(c);
 		
 		// Update Bitmap.

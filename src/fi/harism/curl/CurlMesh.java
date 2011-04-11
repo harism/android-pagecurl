@@ -18,6 +18,9 @@ import android.graphics.RectF;
  */
 public class CurlMesh {
 
+	private static final boolean DRAW_HELPERS = false;
+	private static final boolean DRAW_LINES = false;
+
 	// For testing purposes.
 	private int mHelperLinesCount;
 	private FloatBuffer mHelperLines;
@@ -60,12 +63,14 @@ public class CurlMesh {
 		mRectangle[3] = new Vertex(rect.right, rect.bottom, 0, texRect.right,
 				texRect.bottom);
 
-		mHelperLinesCount = 3;
-		ByteBuffer hvbb = ByteBuffer
-				.allocateDirect(mHelperLinesCount * 2 * 2 * 4);
-		hvbb.order(ByteOrder.nativeOrder());
-		mHelperLines = hvbb.asFloatBuffer();
-		mHelperLines.position(0);
+		if (DRAW_HELPERS) {
+			mHelperLinesCount = 3;
+			ByteBuffer hvbb = ByteBuffer
+					.allocateDirect(mHelperLinesCount * 2 * 2 * 4);
+			hvbb.order(ByteOrder.nativeOrder());
+			mHelperLines = hvbb.asFloatBuffer();
+			mHelperLines.position(0);
+		}
 
 		int maxVerticesCount = 4 + 2 * mMaxCurlSplits;
 		ByteBuffer vbb = ByteBuffer.allocateDirect(maxVerticesCount * 3 * 4);
@@ -83,19 +88,54 @@ public class CurlMesh {
 		mNormals = nbb.asFloatBuffer();
 		mNormals.position(0);
 
-		// TODO: Calculate element count more accurately.
-		ByteBuffer libb = ByteBuffer
-				.allocateDirect(maxVerticesCount * 2 * 2 * 2);
-		libb.order(ByteOrder.nativeOrder());
-		mLineIndices = libb.asShortBuffer();
-		mLineIndices.position(0);
-		mLineIndicesCount = 0;
+		if (DRAW_LINES) {
+			// TODO: Calculate element count more accurately.
+			ByteBuffer libb = ByteBuffer
+					.allocateDirect(maxVerticesCount * 2 * 2 * 2);
+			libb.order(ByteOrder.nativeOrder());
+			mLineIndices = libb.asShortBuffer();
+			mLineIndices.position(0);
+			mLineIndicesCount = 0;
+		}
 
 		ByteBuffer tibb = ByteBuffer.allocateDirect(maxVerticesCount * 2);
 		tibb.order(ByteOrder.nativeOrder());
 		mTriangleIndices = tibb.asShortBuffer();
 		mTriangleIndices.position(0);
 		mTriangleIndicesCount = 0;
+	}
+	
+	/**
+	 * Resets mesh to 'initial' state.
+	 */
+	public synchronized void reset() {
+		mVertices.position(0);
+		mTexCoords.position(0);
+		mNormals.position(0);
+		mTriangleIndices.position(0);
+		for (int i=0; i<4; ++i) {
+			addVertex(mRectangle[i]);
+		}
+		mTriangleIndicesCount=4;		
+		mVertices.position(0);
+		mTexCoords.position(0);
+		mNormals.position(0);
+		mTriangleIndices.position(0);
+	}
+	
+	/**
+	 * Update mesh bounds size.
+	 */
+	public synchronized void setRect(RectF r) {
+		mRectangle[0].mPosX = r.left;
+		mRectangle[0].mPosY = r.top;
+		mRectangle[1].mPosX = r.left;
+		mRectangle[1].mPosY = r.bottom;
+		mRectangle[2].mPosX = r.right;
+		mRectangle[2].mPosY = r.top;
+		mRectangle[3].mPosX = r.right;
+		mRectangle[3].mPosY = r.bottom;
+		reset();
 	}
 
 	/**
@@ -112,30 +152,34 @@ public class CurlMesh {
 			double radius) {
 
 		// First add some 'helper' lines used for development.
-		mHelperLines.position(0);
+		if (DRAW_HELPERS) {
+			mHelperLines.position(0);
 
-		mHelperLines.put(curlPos.x);
-		mHelperLines.put(curlPos.y - 1.0f);
-		mHelperLines.put(curlPos.x);
-		mHelperLines.put(curlPos.y + 1.0f);
-		mHelperLines.put(curlPos.x - 1.0f);
-		mHelperLines.put(curlPos.y);
-		mHelperLines.put(curlPos.x + 1.0f);
-		mHelperLines.put(curlPos.y);
+			mHelperLines.put(curlPos.x);
+			mHelperLines.put(curlPos.y - 1.0f);
+			mHelperLines.put(curlPos.x);
+			mHelperLines.put(curlPos.y + 1.0f);
+			mHelperLines.put(curlPos.x - 1.0f);
+			mHelperLines.put(curlPos.y);
+			mHelperLines.put(curlPos.x + 1.0f);
+			mHelperLines.put(curlPos.y);
 
-		mHelperLines.put(curlPos.x);
-		mHelperLines.put(curlPos.y);
-		mHelperLines.put(curlPos.x + directionVec.x * 2);
-		mHelperLines.put(curlPos.y + directionVec.y * 2);
+			mHelperLines.put(curlPos.x);
+			mHelperLines.put(curlPos.y);
+			mHelperLines.put(curlPos.x + directionVec.x * 2);
+			mHelperLines.put(curlPos.y + directionVec.y * 2);
 
-		mHelperLines.position(0);
+			mHelperLines.position(0);
+		}
 
 		// Actual 'curl' implementation starts here.
 		mVertices.position(0);
 		mTexCoords.position(0);
 		mNormals.position(0);
-		mLineIndices.position(0);
 		mTriangleIndices.position(0);
+		if (DRAW_LINES) {
+			mLineIndices.position(0);
+		}
 
 		// Calculate curl direction.
 		double curlAngle = Math.acos(directionVec.x);
@@ -239,7 +283,7 @@ public class CurlMesh {
 					v.mNormalX = Math.cos(rotY);
 					v.mNormalZ = Math.abs(Math.sin(rotY));
 				}
-				
+
 				// Rotate vertex back to 'world' coordinates.
 				v.rotateZ(curlAngle);
 				v.translate(curlPos.x, curlPos.y);
@@ -249,13 +293,15 @@ public class CurlMesh {
 			scanXmax = scanXmin;
 		}
 
-		mLineIndicesCount = mLineIndices.position();
 		mTriangleIndicesCount = mTriangleIndices.position();
 		mVertices.position(0);
 		mTexCoords.position(0);
 		mNormals.position(0);
-		mLineIndices.position(0);
 		mTriangleIndices.position(0);
+		if (DRAW_LINES) {
+			mLineIndicesCount = mLineIndices.position();
+			mLineIndices.position(0);
+		}
 	}
 
 	/**
@@ -274,15 +320,16 @@ public class CurlMesh {
 
 		mTriangleIndices.put((short) pos);
 
-		if (pos > 0) {
-			mLineIndices.put((short) (pos - 1));
-			mLineIndices.put((short) pos);
+		if (DRAW_LINES) {
+			if (pos > 0) {
+				mLineIndices.put((short) (pos - 1));
+				mLineIndices.put((short) pos);
+			}
+			if (pos > 1) {
+				mLineIndices.put((short) (pos - 2));
+				mLineIndices.put((short) pos);
+			}
 		}
-		if (pos > 1) {
-			mLineIndices.put((short) (pos - 2));
-			mLineIndices.put((short) pos);
-		}
-
 	}
 
 	/**
@@ -308,9 +355,8 @@ public class CurlMesh {
 
 		gl.glEnableClientState(GL10.GL_NORMAL_ARRAY);
 		gl.glNormalPointer(GL10.GL_FLOAT, 0, mNormals);
-
+		
 		gl.glEnable(GL10.GL_TEXTURE_2D);
-		gl.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 		gl.glDrawElements(GL10.GL_TRIANGLE_STRIP, mTriangleIndicesCount,
 				GL10.GL_UNSIGNED_SHORT, mTriangleIndices);
 		gl.glDisable(GL10.GL_TEXTURE_2D);
@@ -320,19 +366,25 @@ public class CurlMesh {
 		gl.glDisableClientState(GL10.GL_NORMAL_ARRAY);
 		gl.glDisableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
 
-		gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
-		gl.glEnable(GL10.GL_BLEND);
-		gl.glEnable(GL10.GL_LINE_SMOOTH);
-		gl.glLineWidth(1.0f);
+		if (DRAW_LINES || DRAW_HELPERS) {
+			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
+			gl.glEnable(GL10.GL_BLEND);
+			gl.glEnable(GL10.GL_LINE_SMOOTH);
+			gl.glLineWidth(1.0f);
+		}
 
-		gl.glColor4f(0.5f, 0.5f, 1.0f, 1.0f);
-		gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mVertices);
-		gl.glDrawElements(GL10.GL_LINES, mLineIndicesCount,
-				GL10.GL_UNSIGNED_SHORT, mLineIndices);
+		if (DRAW_LINES) {
+			gl.glColor4f(0.5f, 0.5f, 1.0f, 1.0f);
+			gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mVertices);
+			gl.glDrawElements(GL10.GL_LINES, mLineIndicesCount,
+					GL10.GL_UNSIGNED_SHORT, mLineIndices);
+		}
 
-		gl.glColor4f(1.0f, 0.5f, 0.5f, 1.0f);
-		gl.glVertexPointer(2, GL10.GL_FLOAT, 0, mHelperLines);
-		gl.glDrawArrays(GL10.GL_LINES, 0, mHelperLinesCount * 2);
+		if (DRAW_HELPERS) {
+			gl.glColor4f(1.0f, 0.5f, 0.5f, 1.0f);
+			gl.glVertexPointer(2, GL10.GL_FLOAT, 0, mHelperLines);
+			gl.glDrawArrays(GL10.GL_LINES, 0, mHelperLinesCount * 2);
+		}
 
 		gl.glDisableClientState(GL10.GL_VERTEX_ARRAY);
 	}

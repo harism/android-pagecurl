@@ -39,7 +39,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	 */
 	public CurlRenderer() {
 		mCurlMesh = new CurlMesh(mCurlRect, new RectF(0, 0, 1, 1), 10);
-		mCurlMesh.curl(new PointF(mCurlRect.left, 0), new PointF(1, 0), 0.3f);
+		mCurlMesh.reset();
 	}
 
 	@Override
@@ -49,7 +49,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 			mBitmapsChanged = false;
 		}
 
-		gl.glClear(GL10.GL_COLOR_BUFFER_BIT | GL10.GL_DEPTH_BUFFER_BIT);
+		gl.glClear(GL10.GL_COLOR_BUFFER_BIT); // | GL10.GL_DEPTH_BUFFER_BIT);
 		gl.glLoadIdentity();
 
 		if (mBitmaps[0] != null) {
@@ -69,23 +69,24 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		gl.glViewport(0, 0, width, height);
 		mViewportWidth = width;
 		mViewportHeight = height;
+		
+		float ratio = (float)width / height;
+		mViewRect.top = 1.0f;
+		mViewRect.bottom = -1.0f;
+		mViewRect.left = -ratio;
+		mViewRect.right = ratio;
+		
+		mCurlRect = mViewRect;
+		mCurlMesh.setRect(mCurlRect);
 
-		mViewRect.top = 1.2f;
-		mViewRect.bottom = -1.2f;
-		mViewRect.left = -1.2f;
-		mViewRect.right = 1.2f;
-
-		float gapW = Math.max(0.0f, (mViewRect.width() * (width - height))
-				/ height);
-		float gapH = Math.max(0.0f, (-mViewRect.height() * (height - width))
-				/ width);
-
-		Log.d("GAPS", "w=" + gapW + " h=" + gapH);
-
-		mViewRect.top += gapH / 2;
-		mViewRect.bottom -= gapH / 2;
-		mViewRect.left -= gapW / 2;
-		mViewRect.right += gapW / 2;
+		//float gapW = Math.max(0.0f, (mViewRect.width() * (width - height))
+		//		/ height);
+		//float gapH = Math.max(0.0f, (-mViewRect.height() * (height - width))
+		//		/ width);
+		//mViewRect.top += gapH / 2;
+		//mViewRect.bottom -= gapH / 2;
+		//mViewRect.left -= gapW / 2;
+		//mViewRect.right += gapW / 2;
 
 		gl.glMatrixMode(GL10.GL_PROJECTION);
 		gl.glLoadIdentity();
@@ -100,9 +101,10 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	public void onSurfaceCreated(GL10 gl, EGLConfig config) {
 		gl.glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 		gl.glShadeModel(GL10.GL_SMOOTH);
-		gl.glClearDepthf(1.0f);
-		gl.glEnable(GL10.GL_DEPTH_TEST);
-		gl.glDepthFunc(GL10.GL_LEQUAL);
+		// No need for depth test.
+		//gl.glClearDepthf(1.0f);
+		//gl.glEnable(GL10.GL_DEPTH_TEST);
+		//gl.glDepthFunc(GL10.GL_LEQUAL);
 		gl.glHint(GL10.GL_PERSPECTIVE_CORRECTION_HINT, GL10.GL_NICEST);
 
 		gl.glGenTextures(TEXTURE_COUNT, mTextureIds, 0);
@@ -143,15 +145,15 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		startPos.y = mViewRect.top
 				- (-mViewRect.height() * startPoint.y / mViewportHeight);
 
-		// Map startPos to (-1.0, 1.0) range.
-		startPos.x = startPos.x < -1.0f ? -1.0f : startPos.x;
-		startPos.x = startPos.x > 1.0f ? 1.0f : startPos.x;
-		startPos.y = startPos.y < -1.0f ? -1.0f : startPos.y;
-		startPos.y = startPos.y > 1.0f ? 1.0f : startPos.y;
+		// Map startPos to view range.
+		startPos.x = startPos.x < mViewRect.left ? mViewRect.left : startPos.x;
+		startPos.x = startPos.x > mViewRect.right ? mViewRect.right : startPos.x;
+		startPos.y = startPos.y < mViewRect.bottom ? mViewRect.bottom : startPos.y;
+		startPos.y = startPos.y > mViewRect.top ? mViewRect.top : startPos.y;
 		if (Math.abs(startPos.x) < Math.abs(startPos.y)) {
-			startPos.y = startPos.y < 0 ? -1.0f : 1.0f;
+			startPos.y = startPos.y < 0 ? mViewRect.bottom : mViewRect.top;
 		} else {
-			startPos.x = startPos.x < 0 ? -1.0f : 1.0f;
+			startPos.x = startPos.x < 0 ? mViewRect.left : mViewRect.right;
 		}
 
 		PointF directionVec = new PointF(curlPos.x - startPos.x, curlPos.y
