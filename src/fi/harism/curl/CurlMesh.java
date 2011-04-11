@@ -204,7 +204,9 @@ public class CurlMesh {
 					rotY -= Math.PI * (v.mPosX / curlLength);
 					//rotY = -rotY;
 					v.mPosX = radius * Math.cos(rotY);
-					v.mPosZ = radius + (radius * -Math.sin(rotY));
+					v.mPosZ = radius + (radius * -Math.sin(rotY));					
+					v.mNormalX = Math.cos(rotY);
+					v.mNormalZ = Math.abs(Math.sin(rotY));
 				}
 				
 				// Rotate vertex back to 'world' coordinates.
@@ -259,16 +261,19 @@ public class CurlMesh {
 		gl.glTexCoordPointer(2, GL10.GL_FLOAT, 0, mTexCoords);
 
 		// TODO: Calculate normals.
-		// gl.glEnable(GL10.GL_LIGHTING);
-		// gl.glEnable(GL10.GL_LIGHT0);
-		// float light0Ambient[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-		// gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_AMBIENT, light0Ambient, 0);
-		// float light0Diffuse[] = { 0.5f, 0.5f, 0.5f, 1.0f };
-		// gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_DIFFUSE, light0Diffuse, 0);
-		// float light0Specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-		// gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_SPECULAR, light0Specular, 0);
-		// float light0Position[] = { 0f, 0f, 100f, 0f };
-		// gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_POSITION, light0Position, 0);
+		 gl.glEnable(GL10.GL_LIGHTING);
+		gl.glEnable(GL10.GL_LIGHT0);
+		float light0Ambient[] = { 0.7f, 0.7f, 0.7f, 1.0f };
+		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_AMBIENT, light0Ambient, 0);
+		float light0Diffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_DIFFUSE, light0Diffuse, 0);
+		float light0Specular[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_SPECULAR, light0Specular, 0);
+		float light0Position[] = { 0f, 0f, 10f, 0f };
+		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_POSITION, light0Position, 0);
+		
+		gl.glEnableClientState(GL10.GL_NORMAL_ARRAY);
+		gl.glNormalPointer(GL10.GL_FLOAT, 0, mNormals);
 
 		gl.glEnable(GL10.GL_TEXTURE_2D);
 		gl.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
@@ -276,8 +281,9 @@ public class CurlMesh {
 				GL10.GL_UNSIGNED_SHORT, mTriangleIndices);
 		gl.glDisable(GL10.GL_TEXTURE_2D);
 
-		// gl.glDisable(GL10.GL_LIGHTING);
-		// gl.glDisable(GL10.GL_LIGHT0);
+		gl.glDisable(GL10.GL_LIGHTING);
+		gl.glDisable(GL10.GL_LIGHT0);
+		gl.glDisableClientState(GL10.GL_NORMAL_ARRAY);
 		gl.glDisableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
 
 		gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
@@ -314,7 +320,8 @@ public class CurlMesh {
 			mPosZ = posZ;
 			mTexX = texX;
 			mTexY = texY;
-			mNormalX = mNormalY = mNormalZ = 0;
+			mNormalX = mNormalY = 0;
+			mNormalZ = 1.0f;
 		}
 
 		public Vertex(Vertex vertex) {
@@ -340,7 +347,11 @@ public class CurlMesh {
 			double y = mPosX * -sin + mPosY * cos;
 			mPosX = x;
 			mPosY = y;
+			
+			x = mNormalX * cos + mNormalY * sin;
+			y = mNormalX * -sin + mPosY * cos;
+			mNormalX = x;
+			mNormalY = y;
 		}
 	}
-
 }
