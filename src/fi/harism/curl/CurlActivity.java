@@ -2,11 +2,9 @@ package fi.harism.curl;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.view.View;
-import android.widget.Button;
 
 /**
- * Holder for Activity.
+ * Basic holder for Activity for curl testing.
  * 
  * @author harism
  */

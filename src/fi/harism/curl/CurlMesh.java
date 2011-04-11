@@ -11,11 +11,18 @@ import javax.microedition.khronos.opengles.GL10;
 import android.graphics.PointF;
 import android.graphics.RectF;
 
+/**
+ * Class implementing actual curl.
+ * 
+ * @author harism
+ */
 public class CurlMesh {
 
+	// For testing purposes.
 	private int mHelperLinesCount;
 	private FloatBuffer mHelperLines;
 
+	// Buffers for feeding rasterizer.
 	private FloatBuffer mVertices;
 	private FloatBuffer mTexCoords;
 	private FloatBuffer mNormals;
@@ -30,7 +37,18 @@ public class CurlMesh {
 
 	private Vertex[] mRectangle = new Vertex[4];
 
+	/**
+	 * Constructor for mesh object.
+	 * 
+	 * @param rect
+	 *            Rect for the surface.
+	 * @param texRect
+	 *            Texture coordinates.
+	 * @param maxCurlSplits
+	 *            Maximum number curl can be divided into.
+	 */
 	public CurlMesh(RectF rect, RectF texRect, int maxCurlSplits) {
+		// We really must have at least one split line.
 		mMaxCurlSplits = maxCurlSplits < 1 ? 1 : maxCurlSplits;
 
 		mRectangle[0] = new Vertex(rect.left, rect.top, 0, texRect.left,
@@ -65,7 +83,7 @@ public class CurlMesh {
 		mNormals = nbb.asFloatBuffer();
 		mNormals.position(0);
 
-		// TODO: Calculate me more accurately.
+		// TODO: Calculate element count more accurately.
 		ByteBuffer libb = ByteBuffer
 				.allocateDirect(maxVerticesCount * 2 * 2 * 2);
 		libb.order(ByteOrder.nativeOrder());
@@ -80,6 +98,16 @@ public class CurlMesh {
 		mTriangleIndicesCount = 0;
 	}
 
+	/**
+	 * Curl calculation.
+	 * 
+	 * @param curlPos
+	 *            Position for curl center.
+	 * @param directionVec
+	 *            Curl direction.
+	 * @param radius
+	 *            Radius of curl.
+	 */
 	public synchronized void curl(PointF curlPos, PointF directionVec,
 			double radius) {
 
@@ -102,7 +130,7 @@ public class CurlMesh {
 
 		mHelperLines.position(0);
 
-		// Actual 'curl' starts here.
+		// Actual 'curl' implementation starts here.
 		mVertices.position(0);
 		mTexCoords.position(0);
 		mNormals.position(0);
@@ -113,34 +141,37 @@ public class CurlMesh {
 		double curlAngle = Math.acos(directionVec.x);
 		curlAngle = directionVec.y > 0 ? -curlAngle : curlAngle;
 
-		// Initiate rotated 'rectangle' which's is translated at curlPos and
+		// Initiate rotated 'rectangle' which's is translated to curlPos and
 		// rotated so that curl direction heads to (1,0).
-		// TODO: This doesn't work in all situations.
 		Vector<Vertex> rotatedVertices = new Vector<Vertex>();
 		for (int i = 0; i < 4; ++i) {
 			Vertex v = new Vertex(mRectangle[i]);
 			v.translate(-curlPos.x, -curlPos.y);
 			v.rotateZ(-curlAngle);
-			
+
 			int j = 0;
 			for (; j < rotatedVertices.size(); ++j) {
 				Vertex v2 = rotatedVertices.elementAt(j);
+				// We want to test for equality but rotating messes this unless
+				// we check against certain error margin instead.
 				double errormargin = 0.001f;
-				if (Math.abs(v.mPosX - v2.mPosX) <= errormargin && v.mPosY < v2.mPosY) {
+				if (Math.abs(v.mPosX - v2.mPosX) <= errormargin
+						&& v.mPosY < v2.mPosY) {
 					break;
 				}
-				if (Math.abs(v.mPosX - v2.mPosX) > errormargin && v.mPosX > v2.mPosX) {
+				if (Math.abs(v.mPosX - v2.mPosX) > errormargin
+						&& v.mPosX > v2.mPosX) {
 					break;
 				}
 			}
 			rotatedVertices.add(j, v);
-		}	
+		}
 
 		// Our rectangle lines/vertex indices.
 		int lines[] = { 0, 1, 2, 0, 3, 1, 3, 2 };
-		// Length of 'curl' area.
+		// Length of 'curl' curve.
 		double curlLength = Math.PI * radius;
-		// Calculate scans lines.
+		// Calculate scan lines.
 		Vector<Double> scanLines = new Vector<Double>();
 		scanLines.add((double) 0);
 		for (int i = 1; i < mMaxCurlSplits; ++i) {
@@ -156,7 +187,7 @@ public class CurlMesh {
 			// First iterate vertices within scan area.
 			for (int j = 0; j < rotatedVertices.size(); ++j) {
 				Vertex v = rotatedVertices.elementAt(j);
-				if (v.mPosX > scanXmin && v.mPosX < scanXmax) {
+				if (v.mPosX >= scanXmin && v.mPosX < scanXmax) {
 					Vertex n = new Vertex(v);
 					out.add(n);
 				}
@@ -192,19 +223,19 @@ public class CurlMesh {
 			// Add vertices to out buffers.
 			while (out.size() > 0) {
 				Vertex v = out.remove(0);
-				
-				// 'Totally' rotated vertices.
+
+				// 'Completely' rotated vertices.
 				if (v.mPosX <= -curlLength) {
 					v.mPosX = -(curlLength + v.mPosX);
-					v.mPosZ = 2*radius;
+					v.mPosZ = 2 * radius;
 				}
 				// Vertex lies within 'curl'.
 				else if (v.mPosX < 0) {
 					double rotY = Math.PI / 2;
 					rotY -= Math.PI * (v.mPosX / curlLength);
-					//rotY = -rotY;
+					// rotY = -rotY;
 					v.mPosX = radius * Math.cos(rotY);
-					v.mPosZ = radius + (radius * -Math.sin(rotY));					
+					v.mPosZ = radius + (radius * -Math.sin(rotY));
 					v.mNormalX = Math.cos(rotY);
 					v.mNormalZ = Math.abs(Math.sin(rotY));
 				}
@@ -227,10 +258,11 @@ public class CurlMesh {
 		mTriangleIndices.position(0);
 	}
 
+	/**
+	 * Adds vertex to buffers.
+	 */
 	private void addVertex(Vertex vertex) {
-
 		int pos = mVertices.position() / 3;
-
 		mVertices.put((float) vertex.mPosX);
 		mVertices.put((float) vertex.mPosY);
 		mVertices.put((float) vertex.mPosZ);
@@ -253,6 +285,9 @@ public class CurlMesh {
 
 	}
 
+	/**
+	 * Draw our mesh.
+	 */
 	public synchronized void draw(GL10 gl) {
 		gl.glEnableClientState(GL10.GL_VERTEX_ARRAY);
 		gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mVertices);
@@ -260,8 +295,7 @@ public class CurlMesh {
 		gl.glEnableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
 		gl.glTexCoordPointer(2, GL10.GL_FLOAT, 0, mTexCoords);
 
-		// TODO: Calculate normals.
-		 gl.glEnable(GL10.GL_LIGHTING);
+		gl.glEnable(GL10.GL_LIGHTING);
 		gl.glEnable(GL10.GL_LIGHT0);
 		float light0Ambient[] = { 0.7f, 0.7f, 0.7f, 1.0f };
 		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_AMBIENT, light0Ambient, 0);
@@ -271,7 +305,7 @@ public class CurlMesh {
 		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_SPECULAR, light0Specular, 0);
 		float light0Position[] = { 0f, 0f, 10f, 0f };
 		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_POSITION, light0Position, 0);
-		
+
 		gl.glEnableClientState(GL10.GL_NORMAL_ARRAY);
 		gl.glNormalPointer(GL10.GL_FLOAT, 0, mNormals);
 
@@ -303,6 +337,9 @@ public class CurlMesh {
 		gl.glDisableClientState(GL10.GL_VERTEX_ARRAY);
 	}
 
+	/**
+	 * Holder for vertex information.
+	 */
 	private class Vertex {
 		public double mPosX;
 		public double mPosY;
@@ -347,7 +384,7 @@ public class CurlMesh {
 			double y = mPosX * -sin + mPosY * cos;
 			mPosX = x;
 			mPosY = y;
-			
+
 			x = mNormalX * cos + mNormalY * sin;
 			y = mNormalX * -sin + mPosY * cos;
 			mNormalX = x;

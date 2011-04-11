@@ -7,7 +7,6 @@ import android.graphics.PointF;
 import android.graphics.drawable.Drawable;
 import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -51,7 +50,6 @@ public class CurlView extends GLSurfaceView {
 		mCurlRenderer = new CurlRenderer();
 		setRenderer(mCurlRenderer);
 		setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-		
 		this.setOnTouchListener(new TouchListener());
 	}
 	
@@ -77,7 +75,7 @@ public class CurlView extends GLSurfaceView {
 	 */
 	private class TouchListener implements View.OnTouchListener {
 		
-		// ACTION_DOWN coodinates.
+		// ACTION_DOWN coordinates.
 		private PointF mStartCoords = new PointF();
 
 		@Override

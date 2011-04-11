@@ -10,22 +10,36 @@ import android.opengl.GLU;
 import android.opengl.GLUtils;
 import android.util.Log;
 
+/**
+ * Actual renderer class. Multiple bitmaps should be provided to get proper
+ * results.
+ * 
+ * @author harism
+ */
 public class CurlRenderer implements GLSurfaceView.Renderer {
 
+	// Rect for render area.
 	private RectF mViewRect = new RectF();
+	// Screen size.
 	private int mViewportWidth;
 	private int mViewportHeight;
 
+	// Flag for updating textures from bitmaps.
 	private boolean mBitmapsChanged = false;
 	private static final int TEXTURE_COUNT = 1;
 	private int[] mTextureIds = new int[TEXTURE_COUNT];
 	private Bitmap[] mBitmaps = new Bitmap[TEXTURE_COUNT];
 
+	// Curl mesh rect.
 	private RectF mCurlRect = new RectF(-1.0f, 1.0f, 1.0f, -1.0f);
 	private CurlMesh mCurlMesh;
 
+	/**
+	 * Basic constructor.
+	 */
 	public CurlRenderer() {
 		mCurlMesh = new CurlMesh(mCurlRect, new RectF(0, 0, 1, 1), 10);
+		mCurlMesh.curl(new PointF(mCurlRect.left, 0), new PointF(1, 0), 0.3f);
 	}
 
 	@Override
@@ -37,7 +51,6 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 
 		gl.glClear(GL10.GL_COLOR_BUFFER_BIT | GL10.GL_DEPTH_BUFFER_BIT);
 		gl.glLoadIdentity();
-		//gl.glTranslatef(0.0f, 0.0f, -4.0f);
 
 		if (mBitmaps[0] != null) {
 			// TODO: Draw left page.
@@ -56,26 +69,29 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		gl.glViewport(0, 0, width, height);
 		mViewportWidth = width;
 		mViewportHeight = height;
-				
+
 		mViewRect.top = 1.2f;
 		mViewRect.bottom = -1.2f;
 		mViewRect.left = -1.2f;
 		mViewRect.right = 1.2f;
-		
-		float gapW = Math.max(0.0f, (mViewRect.width() * (width - height)) / height);
-		float gapH = Math.max(0.0f, (-mViewRect.height() * (height - width)) / width);
-		
-		Log.d ("GAPS", "w=" + gapW + " h=" + gapH);
-		
+
+		float gapW = Math.max(0.0f, (mViewRect.width() * (width - height))
+				/ height);
+		float gapH = Math.max(0.0f, (-mViewRect.height() * (height - width))
+				/ width);
+
+		Log.d("GAPS", "w=" + gapW + " h=" + gapH);
+
 		mViewRect.top += gapH / 2;
 		mViewRect.bottom -= gapH / 2;
 		mViewRect.left -= gapW / 2;
 		mViewRect.right += gapW / 2;
-		
+
 		gl.glMatrixMode(GL10.GL_PROJECTION);
 		gl.glLoadIdentity();
-		GLU.gluOrtho2D(gl, mViewRect.left, mViewRect.right, mViewRect.bottom, mViewRect.top);
-		
+		GLU.gluOrtho2D(gl, mViewRect.left, mViewRect.right, mViewRect.bottom,
+				mViewRect.top);
+
 		gl.glMatrixMode(GL10.GL_MODELVIEW);
 		gl.glLoadIdentity();
 	}
@@ -113,17 +129,20 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	}
 
 	public void curl(PointF startPoint, PointF curlPoint) {
-		
 		// Map position to 'render' coordinates.
 		PointF curlPos = new PointF();
-		curlPos.x = mViewRect.left + (mViewRect.width() * curlPoint.x / mViewportWidth);
-		curlPos.y = mViewRect.top - (-mViewRect.height() * curlPoint.y / mViewportHeight);
-			
+		curlPos.x = mViewRect.left
+				+ (mViewRect.width() * curlPoint.x / mViewportWidth);
+		curlPos.y = mViewRect.top
+				- (-mViewRect.height() * curlPoint.y / mViewportHeight);
+
 		// Map start point to 'render' coordinates.
 		PointF startPos = new PointF();
-		startPos.x = mViewRect.left + (mViewRect.width() * startPoint.x / mViewportWidth);
-		startPos.y = mViewRect.top - (-mViewRect.height() * startPoint.y / mViewportHeight);
-		
+		startPos.x = mViewRect.left
+				+ (mViewRect.width() * startPoint.x / mViewportWidth);
+		startPos.y = mViewRect.top
+				- (-mViewRect.height() * startPoint.y / mViewportHeight);
+
 		// Map startPos to (-1.0, 1.0) range.
 		startPos.x = startPos.x < -1.0f ? -1.0f : startPos.x;
 		startPos.x = startPos.x > 1.0f ? 1.0f : startPos.x;
@@ -134,19 +153,22 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		} else {
 			startPos.x = startPos.x < 0 ? -1.0f : 1.0f;
 		}
-		
-		PointF directionVec = new PointF(curlPos.x - startPos.x, curlPos.y - startPos.y);
-		
+
+		PointF directionVec = new PointF(curlPos.x - startPos.x, curlPos.y
+				- startPos.y);
+
 		double radius = 0.3f;
 		double curlLen = radius * Math.PI;
-		double dist = Math.sqrt(directionVec.x * directionVec.x + directionVec.y * directionVec.y);
+		double dist = Math.sqrt(directionVec.x * directionVec.x
+				+ directionVec.y * directionVec.y);
 		if (dist >= curlLen) {
 			double correction = dist - curlLen;
 			correction /= dist * 2;
 			curlPos.x -= directionVec.x * correction;
 			curlPos.y -= directionVec.y * correction;
 		} else {
-			// TODO: This does not work exactly.
+			// TODO: This does not work exactly. Mesh side should follow pointer
+			// at all times.
 			double correction = -Math.PI * (dist / curlLen);
 			correction += Math.PI / 2;
 			correction = radius * Math.cos(correction);
@@ -154,14 +176,17 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 			curlPos.x += directionVec.x * correction;
 			curlPos.y += directionVec.y * correction;
 		}
-		
+
 		// Normalize direction vector.
-		directionVec.x = (float)(directionVec.x / dist);
-		directionVec.y = (float)(directionVec.y / dist);
-		
+		directionVec.x = (float) (directionVec.x / dist);
+		directionVec.y = (float) (directionVec.y / dist);
+
 		mCurlMesh.curl(curlPos, directionVec, radius);
 	}
 
+	/**
+	 * Update bitmaps/textures.
+	 */
 	public void setBitmap(Bitmap bitmap) {
 		mBitmaps[0] = bitmap;
 		mBitmapsChanged = true;
