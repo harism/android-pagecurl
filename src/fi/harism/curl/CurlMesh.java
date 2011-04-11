@@ -344,7 +344,7 @@ public class CurlMesh {
 
 		gl.glEnable(GL10.GL_LIGHTING);
 		gl.glEnable(GL10.GL_LIGHT0);
-		float light0Ambient[] = { 0.7f, 0.7f, 0.7f, 1.0f };
+		float light0Ambient[] = { 0.0f, 0.0f, 0.0f, 0.0f };
 		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_AMBIENT, light0Ambient, 0);
 		float light0Diffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_DIFFUSE, light0Diffuse, 0);
