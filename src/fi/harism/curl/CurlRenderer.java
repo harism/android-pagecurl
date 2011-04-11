@@ -113,18 +113,53 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	}
 
 	public void curl(PointF startPoint, PointF curlPoint) {
-		// Normalize direction vector.
-		PointF directionVec = new PointF(curlPoint.x - startPoint.x, startPoint.y - curlPoint.y);
-		double len = Math.sqrt(directionVec.x * directionVec.x + directionVec.y * directionVec.y);
-		directionVec.x = (float)(directionVec.x / len);
-		directionVec.y = (float)(directionVec.y / len);
 		
 		// Map position to 'render' coordinates.
 		PointF curlPos = new PointF();
 		curlPos.x = mViewRect.left + (mViewRect.width() * curlPoint.x / mViewportWidth);
 		curlPos.y = mViewRect.top - (-mViewRect.height() * curlPoint.y / mViewportHeight);
+			
+		// Map start point to 'render' coordinates.
+		PointF startPos = new PointF();
+		startPos.x = mViewRect.left + (mViewRect.width() * startPoint.x / mViewportWidth);
+		startPos.y = mViewRect.top - (-mViewRect.height() * startPoint.y / mViewportHeight);
 		
-		mCurlMesh.curl(curlPos, directionVec, 0.3f);
+		// Map startPos to (-1.0, 1.0) range.
+		startPos.x = startPos.x < -1.0f ? -1.0f : startPos.x;
+		startPos.x = startPos.x > 1.0f ? 1.0f : startPos.x;
+		startPos.y = startPos.y < -1.0f ? -1.0f : startPos.y;
+		startPos.y = startPos.y > 1.0f ? 1.0f : startPos.y;
+		if (Math.abs(startPos.x) < Math.abs(startPos.y)) {
+			startPos.y = startPos.y < 0 ? -1.0f : 1.0f;
+		} else {
+			startPos.x = startPos.x < 0 ? -1.0f : 1.0f;
+		}
+		
+		PointF directionVec = new PointF(curlPos.x - startPos.x, curlPos.y - startPos.y);
+		
+		double radius = 0.3f;
+		double curlLen = radius * Math.PI;
+		double dist = Math.sqrt(directionVec.x * directionVec.x + directionVec.y * directionVec.y);
+		if (dist >= curlLen) {
+			double correction = dist - curlLen;
+			correction /= dist * 2;
+			curlPos.x -= directionVec.x * correction;
+			curlPos.y -= directionVec.y * correction;
+		} else {
+			// TODO: This does not work exactly.
+			double correction = -Math.PI * (dist / curlLen);
+			correction += Math.PI / 2;
+			correction = radius * Math.cos(correction);
+			correction /= dist * 2;
+			curlPos.x += directionVec.x * correction;
+			curlPos.y += directionVec.y * correction;
+		}
+		
+		// Normalize direction vector.
+		directionVec.x = (float)(directionVec.x / dist);
+		directionVec.y = (float)(directionVec.y / dist);
+		
+		mCurlMesh.curl(curlPos, directionVec, radius);
 	}
 
 	public void setBitmap(Bitmap bitmap) {
