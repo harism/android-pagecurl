@@ -4,248 +4,343 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
+import java.util.Vector;
 
 import javax.microedition.khronos.opengles.GL10;
 
+import android.graphics.PointF;
+import android.graphics.RectF;
+
 public class CurlMesh {
 
-	private FloatBuffer mHelperVertices;
-	
+	private int mHelperLinesCount;
+	private FloatBuffer mHelperLines;
+
+	private FloatBuffer mVertices;
+	private FloatBuffer mTexCoords;
+	private FloatBuffer mNormals;
+
 	private int mLineIndicesCount;
 	private ShortBuffer mLineIndices;
-	
+
 	private int mTriangleIndicesCount;
 	private ShortBuffer mTriangleIndices;
 
-	private FloatBuffer mVertices;
-	private FloatBuffer mCurledVertices;
-	private FloatBuffer mTexCoords;	
+	private int mMaxCurlSplits;
 
-	public CurlMesh(float x1, float y1, float x2, float y2, int c) {
-		
-		ByteBuffer hvbb = ByteBuffer.allocateDirect(6 * 2 * 2 * 4);
+	private Vertex[] mRectangle = new Vertex[4];
+
+	public CurlMesh(RectF rect, RectF texRect, int maxCurlSplits) {
+		mMaxCurlSplits = maxCurlSplits < 1 ? 1 : maxCurlSplits;
+
+		mRectangle[0] = new Vertex(rect.left, rect.top, 0, texRect.left,
+				texRect.top);
+		mRectangle[1] = new Vertex(rect.left, rect.bottom, 0, texRect.left,
+				texRect.bottom);
+		mRectangle[2] = new Vertex(rect.right, rect.top, 0, texRect.right,
+				texRect.top);
+		mRectangle[3] = new Vertex(rect.right, rect.bottom, 0, texRect.right,
+				texRect.bottom);
+
+		mHelperLinesCount = 3;
+		ByteBuffer hvbb = ByteBuffer
+				.allocateDirect(mHelperLinesCount * 2 * 2 * 4);
 		hvbb.order(ByteOrder.nativeOrder());
-		mHelperVertices = hvbb.asFloatBuffer();
+		mHelperLines = hvbb.asFloatBuffer();
+		mHelperLines.position(0);
 
-		int w = c + 1;
-
-		ByteBuffer vbb = ByteBuffer.allocateDirect(w * w * 2 * 4);
+		int maxVerticesCount = 4 + 2 * mMaxCurlSplits;
+		ByteBuffer vbb = ByteBuffer.allocateDirect(maxVerticesCount * 3 * 4);
 		vbb.order(ByteOrder.nativeOrder());
 		mVertices = vbb.asFloatBuffer();
-		ByteBuffer cvbb = ByteBuffer.allocateDirect(w * w * 3 * 4);
-		cvbb.order(ByteOrder.nativeOrder());
-		mCurledVertices = cvbb.asFloatBuffer();
-		ByteBuffer tbb = ByteBuffer.allocateDirect(w * w * 2 * 4);
+		mVertices.position(0);
+
+		ByteBuffer tbb = ByteBuffer.allocateDirect(maxVerticesCount * 2 * 4);
 		tbb.order(ByteOrder.nativeOrder());
 		mTexCoords = tbb.asFloatBuffer();
-		
-		mLineIndicesCount = c * c * 5 * 2;		
-		ByteBuffer libb = ByteBuffer.allocateDirect(mLineIndicesCount * 2);
+		mTexCoords.position(0);
+
+		ByteBuffer nbb = ByteBuffer.allocateDirect(maxVerticesCount * 3 * 4);
+		nbb.order(ByteOrder.nativeOrder());
+		mNormals = nbb.asFloatBuffer();
+		mNormals.position(0);
+
+		// TODO: Calculate me more accurately.
+		ByteBuffer libb = ByteBuffer
+				.allocateDirect(maxVerticesCount * 2 * 2 * 2);
 		libb.order(ByteOrder.nativeOrder());
 		mLineIndices = libb.asShortBuffer();
-		
-		mTriangleIndicesCount = c * c * 3 * 2;
-		ByteBuffer tibb = ByteBuffer.allocateDirect(mTriangleIndicesCount * 2);
+		mLineIndices.position(0);
+		mLineIndicesCount = 0;
+
+		ByteBuffer tibb = ByteBuffer.allocateDirect(maxVerticesCount * 2);
 		tibb.order(ByteOrder.nativeOrder());
-		mTriangleIndices = tibb.asShortBuffer();		
+		mTriangleIndices = tibb.asShortBuffer();
+		mTriangleIndices.position(0);
+		mTriangleIndicesCount = 0;
+	}
 
-		split(mTexCoords, 0, 0, 1, 1, c);
-		split(mVertices, x1, y1, x2, y2, c);
+	public synchronized void curl(PointF curlPos, PointF directionVec,
+			double radius) {
 
-		for (int y = 0; y < c; ++y) {
-			for (int x = 0; x < c; ++x) {
-				int ind = x + (y * w);
-				
-				// Lines.
-				mLineIndices.put((short) (ind));
-				mLineIndices.put((short) (ind + w));
+		// First add some 'helper' lines used for development.
+		mHelperLines.position(0);
 
-				mLineIndices.put((short) (ind + w));
-				mLineIndices.put((short) (ind + 1));
+		mHelperLines.put(curlPos.x);
+		mHelperLines.put(curlPos.y - 1.0f);
+		mHelperLines.put(curlPos.x);
+		mHelperLines.put(curlPos.y + 1.0f);
+		mHelperLines.put(curlPos.x - 1.0f);
+		mHelperLines.put(curlPos.y);
+		mHelperLines.put(curlPos.x + 1.0f);
+		mHelperLines.put(curlPos.y);
 
-				mLineIndices.put((short) (ind + 1));
-				mLineIndices.put((short) (ind));
+		mHelperLines.put(curlPos.x);
+		mHelperLines.put(curlPos.y);
+		mHelperLines.put(curlPos.x + directionVec.x * 2);
+		mHelperLines.put(curlPos.y + directionVec.y * 2);
 
-				mLineIndices.put((short) (ind + w));
-				mLineIndices.put((short) (ind + w + 1));
+		mHelperLines.position(0);
 
-				mLineIndices.put((short) (ind + w + 1));
-				mLineIndices.put((short) (ind + 1));
-				
-				// Triangles.
-				mTriangleIndices.put((short)(ind));
-				mTriangleIndices.put((short)(ind+w));
-				mTriangleIndices.put((short)(ind+1));
-				
-				mTriangleIndices.put((short)(ind+w));
-				mTriangleIndices.put((short)(ind+w+1));
-				mTriangleIndices.put((short)(ind+1));				
-			}
-		}
-
-		mHelperVertices.position(0);
+		// Actual 'curl' starts here.
 		mVertices.position(0);
 		mTexCoords.position(0);
+		mNormals.position(0);
+		mLineIndices.position(0);
+		mTriangleIndices.position(0);
+
+		// Calculate curl direction.
+		double curlAngle = Math.acos(directionVec.x);
+		curlAngle = directionVec.y > 0 ? -curlAngle : curlAngle;
+
+		// Initiate rotated 'rectangle' which's is translated at curlPos and
+		// rotated so that curl direction heads to (1,0).
+		// TODO: This doesn't work in all situations.
+		Vector<Vertex> rotatedVertices = new Vector<Vertex>();
+		for (int i = 0; i < 4; ++i) {
+			Vertex v = new Vertex(mRectangle[i]);
+			v.translate(-curlPos.x, -curlPos.y);
+			v.rotateZ(-curlAngle);
+			
+			int j = 0;
+			for (; j < rotatedVertices.size(); ++j) {
+				Vertex v2 = rotatedVertices.elementAt(j);
+				double errormargin = 0.001f;
+				if (Math.abs(v.mPosX - v2.mPosX) <= errormargin && v.mPosY < v2.mPosY) {
+					break;
+				}
+				if (Math.abs(v.mPosX - v2.mPosX) > errormargin && v.mPosX > v2.mPosX) {
+					break;
+				}
+			}
+			rotatedVertices.add(j, v);
+		}	
+
+		// Our rectangle lines/vertex indices.
+		int lines[] = { 0, 1, 2, 0, 3, 1, 3, 2 };
+		// Length of 'curl' area.
+		double curlLength = Math.PI * radius;
+		// Calculate scans lines.
+		Vector<Double> scanLines = new Vector<Double>();
+		scanLines.add((double) 0);
+		for (int i = 1; i < mMaxCurlSplits; ++i) {
+			scanLines.add((-curlLength * i) / (mMaxCurlSplits - 1));
+		}
+		scanLines.add(rotatedVertices.elementAt(3).mPosX - 1);
+
+		// Start from right most vertex.
+		double scanXmax = rotatedVertices.elementAt(0).mPosX + 1;
+		Vector<Vertex> out = new Vector<Vertex>();
+		for (int i = 0; i < scanLines.size(); ++i) {
+			double scanXmin = scanLines.elementAt(i);
+			// First iterate vertices within scan area.
+			for (int j = 0; j < rotatedVertices.size(); ++j) {
+				Vertex v = rotatedVertices.elementAt(j);
+				if (v.mPosX > scanXmin && v.mPosX < scanXmax) {
+					Vertex n = new Vertex(v);
+					out.add(n);
+				}
+			}
+			// Search for line intersections.
+			Vector<Vertex> temp = new Vector<Vertex>();
+			for (int j = 0; j < lines.length; j += 2) {
+				Vertex v1 = rotatedVertices.elementAt(lines[j]);
+				Vertex v2 = rotatedVertices.elementAt(lines[j + 1]);
+				if ((v1.mPosX > scanXmin && v2.mPosX < scanXmin)
+						|| (v2.mPosX > scanXmin && v1.mPosX < scanXmin)) {
+					Vertex n = new Vertex(v2);
+					n.mPosX = scanXmin;
+					double c = (scanXmin - v2.mPosX) / (v1.mPosX - v2.mPosX);
+					n.mPosY += (v1.mPosY - v2.mPosY) * c;
+					n.mTexX += (v1.mTexX - v2.mTexX) * c;
+					n.mTexY += (v1.mTexY - v2.mTexY) * c;
+					temp.add(n);
+				}
+			}
+			// This happens if scan line intersects a vertex.
+			if (temp.size() == 1) {
+				for (int j = 0; j < rotatedVertices.size(); ++j) {
+					Vertex v = rotatedVertices.elementAt(j);
+					if (v.mPosX == scanXmax) {
+						Vertex n = new Vertex(v);
+						temp.add(n);
+					}
+				}
+			}
+			out.addAll(temp);
+
+			// Add vertices to out buffers.
+			while (out.size() > 0) {
+				Vertex v = out.remove(0);
+				
+				// 'Totally' rotated vertices.
+				if (v.mPosX <= -curlLength) {
+					v.mPosX = -(curlLength + v.mPosX);
+					v.mPosZ = 2*radius;
+				}
+				// Vertex lies within 'curl'.
+				else if (v.mPosX < 0) {
+					double rotY = Math.PI / 2;
+					rotY -= Math.PI * (v.mPosX / curlLength);
+					//rotY = -rotY;
+					v.mPosX = radius * Math.cos(rotY);
+					v.mPosZ = radius + (radius * -Math.sin(rotY));
+				}
+				
+				// Rotate vertex back to 'world' coordinates.
+				v.rotateZ(curlAngle);
+				v.translate(curlPos.x, curlPos.y);
+				addVertex(v);
+			}
+
+			scanXmax = scanXmin;
+		}
+
+		mLineIndicesCount = mLineIndices.position();
+		mTriangleIndicesCount = mTriangleIndices.position();
+		mVertices.position(0);
+		mTexCoords.position(0);
+		mNormals.position(0);
 		mLineIndices.position(0);
 		mTriangleIndices.position(0);
 	}
 
-	public synchronized void curl(float x1, float y1, float x2, float y2) {
-		
-		double theta = (y2-y1) / (x1-x2);
-		
-		double radius = 0.3f;
-		radius *= Math.min(1.0f, x2 - -1.0f);
-		double curlLen = radius * Math.PI;
-		double cx = (x1 - x2);
-		double cy = (y1 - y2);
-		double cLen = Math.sqrt(cx * cx + cy * cy);
-		if (cLen < curlLen) {
-			// TODO: This does not work.
-			double r = (Math.PI / 2) - ((cLen / curlLen) * Math.PI);
-			double x = radius * Math.cos(r);
-			double cLen2 = -x;
-			cLen2 = (cLen2 / 2) / cLen;
-			cx = x2 + (cx * cLen2);
-			cy = y2 + (cy * cLen2);
-		} else {
-			double cLen2 = cLen - (Math.PI * radius);
-			cLen2 = (cLen2 / 2) / cLen;
-			cx = x2 + (cx * cLen2);
-			cy = y2 + (cy * cLen2);
+	private void addVertex(Vertex vertex) {
+
+		int pos = mVertices.position() / 3;
+
+		mVertices.put((float) vertex.mPosX);
+		mVertices.put((float) vertex.mPosY);
+		mVertices.put((float) vertex.mPosZ);
+		mTexCoords.put((float) vertex.mTexX);
+		mTexCoords.put((float) vertex.mTexY);
+		mNormals.put((float) vertex.mNormalX);
+		mNormals.put((float) vertex.mNormalY);
+		mNormals.put((float) vertex.mNormalZ);
+
+		mTriangleIndices.put((short) pos);
+
+		if (pos > 0) {
+			mLineIndices.put((short) (pos - 1));
+			mLineIndices.put((short) pos);
 		}
-		
-		mHelperVertices.position(0);
-		
-		mHelperVertices.put(x2);
-		mHelperVertices.put(1.0f);
-		mHelperVertices.put(x2);
-		mHelperVertices.put(-1.0f);
-
-		mHelperVertices.put(-1.0f);
-		mHelperVertices.put(y2);
-		mHelperVertices.put(1.0f);
-		mHelperVertices.put(y2);
-		
-		mHelperVertices.put((float)(x2 + ((1.0f - y2) * theta)));
-		mHelperVertices.put(1.0f);
-		mHelperVertices.put((float)(x2 + ((-1.0f - y2) * theta)));
-		mHelperVertices.put(-1.0f);
-		
-		mHelperVertices.put((float)(x1 + ((1.0f - y1)* theta)));
-		mHelperVertices.put(1.0f);
-		mHelperVertices.put((float)(x1 + ((-1.0f - y1) * theta)));
-		mHelperVertices.put(-1.0f);
-				
-		mHelperVertices.put((float)(cx + ((1.0f - cy)* theta)));
-		mHelperVertices.put(1.0f);
-		mHelperVertices.put((float)(cx + ((-1.0f - cy) * theta)));
-		mHelperVertices.put(-1.0f);
-		
-		mHelperVertices.position(0);
-		
-		mVertices.position(0);
-		mCurledVertices.position(0);
-		while (mVertices.remaining() >= 2) {
-			double x = mVertices.get();
-			double y = mVertices.get();
-			double z = 0.0f;
-			
-			double curlX = cx + (y - cy) * theta;
-			
-			if (x > curlX) {
-				double rotZ = -Math.atan(theta);
-				double pX = (x - curlX) * Math.cos(rotZ);
-				double pY = (x - curlX) * Math.sin(rotZ);
-								
-				if (pX < curlLen) {
-					double rotY = Math.PI / 2;
-					rotY -= Math.PI * (pX / curlLen);
-					double rX = radius * Math.cos(rotY);
-					double rZ = radius * (-Math.sin(rotY));				
-					pX = rX;
-					z = radius + rZ;
-				} else {
-					pX -= curlLen;
-					pX = -pX;
-					z = radius * 2;
-				}
-				
-				double fX = (pX * Math.cos(-rotZ)) - (pY * Math.sin(-rotZ));
-				double fY = (pX * Math.sin(-rotZ)) + (pY * Math.cos(-rotZ));
-				
-				x = curlX + fX;
-				y -= fY;
-			}
-			
-			mCurledVertices.put((float) x);
-			mCurledVertices.put((float) y);
-			mCurledVertices.put((float) z);
-		}
-		mVertices.position(0);
-		mCurledVertices.position(0);
-	}
-
-	private void split(FloatBuffer buf, float x1, float y1, float x2, float y2,	int c) {
-		float xArray[] = new float[c + 1];
-		float yArray[] = new float[c + 1];
-
-		for (int i = 0; i <= c; ++i) {
-			xArray[i] = x1 + ((x2 - x1) * ((float) i / c));
-			yArray[i] = y1 + ((y2 - y1) * ((float) i / c));
+		if (pos > 1) {
+			mLineIndices.put((short) (pos - 2));
+			mLineIndices.put((short) pos);
 		}
 
-		for (int iy = 0; iy <= c; ++iy) {
-			for (int ix = 0; ix <= c; ++ix) {
-				buf.put(xArray[ix]);
-				buf.put(yArray[iy]);
-			}
-		}
 	}
 
 	public synchronized void draw(GL10 gl) {
 		gl.glEnableClientState(GL10.GL_VERTEX_ARRAY);
-		gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mCurledVertices);
-		
+		gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mVertices);
+
 		gl.glEnableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
 		gl.glTexCoordPointer(2, GL10.GL_FLOAT, 0, mTexCoords);
-		
+
+		// TODO: Calculate normals.
+		// gl.glEnable(GL10.GL_LIGHTING);
+		// gl.glEnable(GL10.GL_LIGHT0);
+		// float light0Ambient[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+		// gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_AMBIENT, light0Ambient, 0);
+		// float light0Diffuse[] = { 0.5f, 0.5f, 0.5f, 1.0f };
+		// gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_DIFFUSE, light0Diffuse, 0);
+		// float light0Specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+		// gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_SPECULAR, light0Specular, 0);
+		// float light0Position[] = { 0f, 0f, 100f, 0f };
+		// gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_POSITION, light0Position, 0);
+
 		gl.glEnable(GL10.GL_TEXTURE_2D);
 		gl.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-		
-		// TODO: Calculate normals.
-		//gl.glEnable(GL10.GL_LIGHTING);
-		//gl.glEnable(GL10.GL_LIGHT0);
-		//float light0Ambient[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-		//gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_AMBIENT, light0Ambient, 0);
-		//float light0Diffuse[] = { 0.5f, 0.5f, 0.5f, 1.0f };
-		//gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_DIFFUSE, light0Diffuse, 0);
-		//float light0Specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-		//gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_SPECULAR, light0Specular, 0);
-		//float light0Position[] = { 0f, 0f, 100f, 0f };
-		//gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_POSITION, light0Position, 0);
-		
-		gl.glDrawElements(GL10.GL_TRIANGLES, mTriangleIndicesCount, GL10.GL_UNSIGNED_SHORT, mTriangleIndices);
+		gl.glDrawElements(GL10.GL_TRIANGLE_STRIP, mTriangleIndicesCount,
+				GL10.GL_UNSIGNED_SHORT, mTriangleIndices);
 		gl.glDisable(GL10.GL_TEXTURE_2D);
-		
-		//gl.glDisable(GL10.GL_LIGHTING);
-		//gl.glDisable(GL10.GL_LIGHT0);
-		
+
+		// gl.glDisable(GL10.GL_LIGHTING);
+		// gl.glDisable(GL10.GL_LIGHT0);
 		gl.glDisableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
 
 		gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
 		gl.glEnable(GL10.GL_BLEND);
 		gl.glEnable(GL10.GL_LINE_SMOOTH);
+		gl.glLineWidth(1.0f);
 
 		gl.glColor4f(0.5f, 0.5f, 1.0f, 1.0f);
-		gl.glDrawElements(GL10.GL_LINES, mLineIndicesCount, GL10.GL_UNSIGNED_SHORT,
-				mLineIndices);
+		gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mVertices);
+		gl.glDrawElements(GL10.GL_LINES, mLineIndicesCount,
+				GL10.GL_UNSIGNED_SHORT, mLineIndices);
 
 		gl.glColor4f(1.0f, 0.5f, 0.5f, 1.0f);
-		gl.glVertexPointer(2, GL10.GL_FLOAT, 0, mHelperVertices);
-		gl.glDrawArrays(GL10.GL_LINES, 0, 10);
+		gl.glVertexPointer(2, GL10.GL_FLOAT, 0, mHelperLines);
+		gl.glDrawArrays(GL10.GL_LINES, 0, mHelperLinesCount * 2);
 
 		gl.glDisableClientState(GL10.GL_VERTEX_ARRAY);
+	}
+
+	private class Vertex {
+		public double mPosX;
+		public double mPosY;
+		public double mPosZ;
+		public double mTexX;
+		public double mTexY;
+		public double mNormalX;
+		public double mNormalY;
+		public double mNormalZ;
+
+		public Vertex(double posX, double posY, double posZ, double texX,
+				double texY) {
+			mPosX = posX;
+			mPosY = posY;
+			mPosZ = posZ;
+			mTexX = texX;
+			mTexY = texY;
+			mNormalX = mNormalY = mNormalZ = 0;
+		}
+
+		public Vertex(Vertex vertex) {
+			mPosX = vertex.mPosX;
+			mPosY = vertex.mPosY;
+			mPosZ = vertex.mPosZ;
+			mTexX = vertex.mTexX;
+			mTexY = vertex.mTexY;
+			mNormalX = vertex.mNormalX;
+			mNormalY = vertex.mNormalY;
+			mNormalZ = vertex.mNormalZ;
+		}
+
+		public void translate(double dx, double dy) {
+			mPosX += dx;
+			mPosY += dy;
+		}
+
+		public void rotateZ(double theta) {
+			double cos = Math.cos(theta);
+			double sin = Math.sin(theta);
+			double x = mPosX * cos + mPosY * sin;
+			double y = mPosX * -sin + mPosY * cos;
+			mPosX = x;
+			mPosY = y;
+		}
 	}
 
 }

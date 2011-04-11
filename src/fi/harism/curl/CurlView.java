@@ -3,6 +3,7 @@ package fi.harism.curl;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.PointF;
 import android.graphics.drawable.Drawable;
 import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
@@ -77,19 +78,17 @@ public class CurlView extends GLSurfaceView {
 	private class TouchListener implements View.OnTouchListener {
 		
 		// ACTION_DOWN coodinates.
-		private float x1 = 0;
-		private float y1 = 0;
+		private PointF mStartCoords = new PointF();
 
 		@Override
 		public boolean onTouch(View v, MotionEvent me) {
 			if (me.getAction() == MotionEvent.ACTION_DOWN) {
-				x1 = 1.0f;
-				y1 = ((getHeight() / 2.0f) - me.getY()) / (getHeight());
+				mStartCoords.x = me.getX();
+				mStartCoords.y = me.getY();
 			}
 			if (me.getAction() == MotionEvent.ACTION_MOVE) {
-				float x2 = (me.getX() - (getWidth() / 2.0f)) / (getWidth() / 2.0f);
-				float y2 = ((getHeight() / 2.0f) - me.getY()) / (getHeight());
-				mCurlRenderer.curl(x1, y1, x2, y2);
+				PointF curCoords = new PointF(me.getX(), me.getY());
+				mCurlRenderer.curl(mStartCoords, curCoords);
 				requestRender();
 			}
 			return true;
