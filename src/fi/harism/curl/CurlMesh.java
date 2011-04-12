@@ -19,7 +19,7 @@ import android.graphics.RectF;
 public class CurlMesh {
 
 	private static final boolean DRAW_HELPERS = false;
-	private static final boolean DRAW_LINES = false;
+	private static final boolean DRAW_POLYGON_OUTLINES = false;
 
 	// For testing purposes.
 	private int mHelperLinesCount;
@@ -33,8 +33,8 @@ public class CurlMesh {
 	private int mLineIndicesCount;
 	private ShortBuffer mLineIndices;
 
-	private int mTriangleIndicesCount;
-	private ShortBuffer mTriangleIndices;
+	private int mPolygonIndicesCount;
+	private ShortBuffer mPolygonIndices;
 
 	private int mMaxCurlSplits;
 
@@ -88,7 +88,7 @@ public class CurlMesh {
 		mNormals = nbb.asFloatBuffer();
 		mNormals.position(0);
 
-		if (DRAW_LINES) {
+		if (DRAW_POLYGON_OUTLINES) {
 			// TODO: Calculate element count more accurately.
 			ByteBuffer libb = ByteBuffer
 					.allocateDirect(maxVerticesCount * 2 * 2 * 2);
@@ -98,11 +98,11 @@ public class CurlMesh {
 			mLineIndicesCount = 0;
 		}
 
-		ByteBuffer tibb = ByteBuffer.allocateDirect(maxVerticesCount * 2);
-		tibb.order(ByteOrder.nativeOrder());
-		mTriangleIndices = tibb.asShortBuffer();
-		mTriangleIndices.position(0);
-		mTriangleIndicesCount = 0;
+		ByteBuffer pibb = ByteBuffer.allocateDirect(maxVerticesCount * 2);
+		pibb.order(ByteOrder.nativeOrder());
+		mPolygonIndices = pibb.asShortBuffer();
+		mPolygonIndices.position(0);
+		mPolygonIndicesCount = 0;
 	}
 	
 	/**
@@ -112,15 +112,15 @@ public class CurlMesh {
 		mVertices.position(0);
 		mTexCoords.position(0);
 		mNormals.position(0);
-		mTriangleIndices.position(0);
+		mPolygonIndices.position(0);
 		for (int i=0; i<4; ++i) {
 			addVertex(mRectangle[i]);
 		}
-		mTriangleIndicesCount=4;		
+		mPolygonIndicesCount=4;		
 		mVertices.position(0);
 		mTexCoords.position(0);
 		mNormals.position(0);
-		mTriangleIndices.position(0);
+		mPolygonIndices.position(0);
 	}
 	
 	/**
@@ -176,8 +176,8 @@ public class CurlMesh {
 		mVertices.position(0);
 		mTexCoords.position(0);
 		mNormals.position(0);
-		mTriangleIndices.position(0);
-		if (DRAW_LINES) {
+		mPolygonIndices.position(0);
+		if (DRAW_POLYGON_OUTLINES) {
 			mLineIndices.position(0);
 		}
 
@@ -237,7 +237,6 @@ public class CurlMesh {
 				}
 			}
 			// Search for line intersections.
-			Vector<Vertex> temp = new Vector<Vertex>();
 			for (int j = 0; j < lines.length; j += 2) {
 				Vertex v1 = rotatedVertices.elementAt(lines[j]);
 				Vertex v2 = rotatedVertices.elementAt(lines[j + 1]);
@@ -249,20 +248,9 @@ public class CurlMesh {
 					n.mPosY += (v1.mPosY - v2.mPosY) * c;
 					n.mTexX += (v1.mTexX - v2.mTexX) * c;
 					n.mTexY += (v1.mTexY - v2.mTexY) * c;
-					temp.add(n);
+					out.add(n);
 				}
 			}
-			// This happens if scan line intersects a vertex.
-			if (temp.size() == 1) {
-				for (int j = 0; j < rotatedVertices.size(); ++j) {
-					Vertex v = rotatedVertices.elementAt(j);
-					if (v.mPosX == scanXmax) {
-						Vertex n = new Vertex(v);
-						temp.add(n);
-					}
-				}
-			}
-			out.addAll(temp);
 
 			// Add vertices to out buffers.
 			while (out.size() > 0) {
@@ -293,12 +281,12 @@ public class CurlMesh {
 			scanXmax = scanXmin;
 		}
 
-		mTriangleIndicesCount = mTriangleIndices.position();
+		mPolygonIndicesCount = mPolygonIndices.position();
 		mVertices.position(0);
 		mTexCoords.position(0);
 		mNormals.position(0);
-		mTriangleIndices.position(0);
-		if (DRAW_LINES) {
+		mPolygonIndices.position(0);
+		if (DRAW_POLYGON_OUTLINES) {
 			mLineIndicesCount = mLineIndices.position();
 			mLineIndices.position(0);
 		}
@@ -318,9 +306,9 @@ public class CurlMesh {
 		mNormals.put((float) vertex.mNormalY);
 		mNormals.put((float) vertex.mNormalZ);
 
-		mTriangleIndices.put((short) pos);
+		mPolygonIndices.put((short) pos);
 
-		if (DRAW_LINES) {
+		if (DRAW_POLYGON_OUTLINES) {
 			if (pos > 0) {
 				mLineIndices.put((short) (pos - 1));
 				mLineIndices.put((short) pos);
@@ -360,8 +348,8 @@ public class CurlMesh {
 		gl.glEnable(GL10.GL_BLEND);
 		
 		gl.glEnable(GL10.GL_TEXTURE_2D);
-		gl.glDrawElements(GL10.GL_TRIANGLE_STRIP, mTriangleIndicesCount,
-				GL10.GL_UNSIGNED_SHORT, mTriangleIndices);
+		gl.glDrawElements(GL10.GL_TRIANGLE_STRIP, mPolygonIndicesCount,
+				GL10.GL_UNSIGNED_SHORT, mPolygonIndices);
 		gl.glDisable(GL10.GL_TEXTURE_2D);
 
 		gl.glDisable(GL10.GL_LIGHTING);
@@ -369,14 +357,14 @@ public class CurlMesh {
 		gl.glDisableClientState(GL10.GL_NORMAL_ARRAY);
 		gl.glDisableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
 
-		if (DRAW_LINES || DRAW_HELPERS) {
+		if (DRAW_POLYGON_OUTLINES || DRAW_HELPERS) {
 			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
 			gl.glEnable(GL10.GL_BLEND);
 			gl.glEnable(GL10.GL_LINE_SMOOTH);
 			gl.glLineWidth(1.0f);
 		}
 
-		if (DRAW_LINES) {
+		if (DRAW_POLYGON_OUTLINES) {
 			gl.glColor4f(0.5f, 0.5f, 1.0f, 1.0f);
 			gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mVertices);
 			gl.glDrawElements(GL10.GL_LINES, mLineIndicesCount,
