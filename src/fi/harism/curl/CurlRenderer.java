@@ -163,25 +163,22 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		double curlLen = radius * Math.PI;
 		double dist = Math.sqrt(directionVec.x * directionVec.x
 				+ directionVec.y * directionVec.y);
-		if (dist >= curlLen) {
-			double correction = dist - curlLen;
-			correction /= dist * 2;
-			curlPos.x -= directionVec.x * correction;
-			curlPos.y -= directionVec.y * correction;
-		} else {
-			// TODO: This does not work exactly. Mesh side should follow pointer
-			// at all times.
-			double correction = -Math.PI * (dist / curlLen);
-			correction += Math.PI / 2;
-			correction = radius * Math.cos(correction);
-			correction /= dist * 2;
-			curlPos.x += directionVec.x * correction;
-			curlPos.y += directionVec.y * correction;
-		}
-
+		
 		// Normalize direction vector.
 		directionVec.x = (float) (directionVec.x / dist);
 		directionVec.y = (float) (directionVec.y / dist);
+		
+		if (dist >= curlLen) {
+			double translate = (dist - curlLen) / 2;
+			curlPos.x -= directionVec.x * translate;
+			curlPos.y -= directionVec.y * translate;
+		} else {
+			// TODO: This is still not 100% accurate.
+			double angle = Math.PI * Math.sqrt(dist / curlLen);
+			double translate = radius * Math.sin(angle);
+			curlPos.x += directionVec.x * translate;
+			curlPos.y += directionVec.y * translate;
+		}
 
 		mCurlMesh.curl(curlPos, directionVec, radius);
 	}
