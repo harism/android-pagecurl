@@ -3,7 +3,6 @@ package fi.harism.curl;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.nio.ShortBuffer;
 import java.util.Vector;
 
 import javax.microedition.khronos.opengles.GL10;
@@ -29,12 +28,7 @@ public class CurlMesh {
 	private FloatBuffer mVertices;
 	private FloatBuffer mTexCoords;
 	private FloatBuffer mNormals;
-
-	private int mLineIndicesCount;
-	private ShortBuffer mLineIndices;
-
-	private int mPolygonIndicesCount;
-	private ShortBuffer mPolygonIndices;
+	private int mVerticesCount;
 
 	private int mMaxCurlSplits;
 
@@ -87,22 +81,6 @@ public class CurlMesh {
 		nbb.order(ByteOrder.nativeOrder());
 		mNormals = nbb.asFloatBuffer();
 		mNormals.position(0);
-
-		if (DRAW_POLYGON_OUTLINES) {
-			// TODO: Calculate element count more accurately.
-			ByteBuffer libb = ByteBuffer
-					.allocateDirect(maxVerticesCount * 2 * 2 * 2);
-			libb.order(ByteOrder.nativeOrder());
-			mLineIndices = libb.asShortBuffer();
-			mLineIndices.position(0);
-			mLineIndicesCount = 0;
-		}
-
-		ByteBuffer pibb = ByteBuffer.allocateDirect(maxVerticesCount * 2);
-		pibb.order(ByteOrder.nativeOrder());
-		mPolygonIndices = pibb.asShortBuffer();
-		mPolygonIndices.position(0);
-		mPolygonIndicesCount = 0;
 	}
 	
 	/**
@@ -112,15 +90,13 @@ public class CurlMesh {
 		mVertices.position(0);
 		mTexCoords.position(0);
 		mNormals.position(0);
-		mPolygonIndices.position(0);
 		for (int i=0; i<4; ++i) {
 			addVertex(mRectangle[i]);
 		}
-		mPolygonIndicesCount=4;		
+		mVerticesCount=4;		
 		mVertices.position(0);
 		mTexCoords.position(0);
 		mNormals.position(0);
-		mPolygonIndices.position(0);
 	}
 	
 	/**
@@ -176,10 +152,6 @@ public class CurlMesh {
 		mVertices.position(0);
 		mTexCoords.position(0);
 		mNormals.position(0);
-		mPolygonIndices.position(0);
-		if (DRAW_POLYGON_OUTLINES) {
-			mLineIndices.position(0);
-		}
 
 		// Calculate curl direction.
 		double curlAngle = Math.acos(directionVec.x);
@@ -281,15 +253,10 @@ public class CurlMesh {
 			scanXmax = scanXmin;
 		}
 
-		mPolygonIndicesCount = mPolygonIndices.position();
+		mVerticesCount = mVertices.position() / 3;
 		mVertices.position(0);
 		mTexCoords.position(0);
 		mNormals.position(0);
-		mPolygonIndices.position(0);
-		if (DRAW_POLYGON_OUTLINES) {
-			mLineIndicesCount = mLineIndices.position();
-			mLineIndices.position(0);
-		}
 	}
 
 	/**
@@ -305,19 +272,6 @@ public class CurlMesh {
 		mNormals.put((float) vertex.mNormalX);
 		mNormals.put((float) vertex.mNormalY);
 		mNormals.put((float) vertex.mNormalZ);
-
-		mPolygonIndices.put((short) pos);
-
-		if (DRAW_POLYGON_OUTLINES) {
-			if (pos > 0) {
-				mLineIndices.put((short) (pos - 1));
-				mLineIndices.put((short) pos);
-			}
-			if (pos > 1) {
-				mLineIndices.put((short) (pos - 2));
-				mLineIndices.put((short) pos);
-			}
-		}
 	}
 
 	/**
@@ -348,8 +302,7 @@ public class CurlMesh {
 		gl.glEnable(GL10.GL_BLEND);
 		
 		gl.glEnable(GL10.GL_TEXTURE_2D);
-		gl.glDrawElements(GL10.GL_TRIANGLE_STRIP, mPolygonIndicesCount,
-				GL10.GL_UNSIGNED_SHORT, mPolygonIndices);
+		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, mVerticesCount);
 		gl.glDisable(GL10.GL_TEXTURE_2D);
 
 		gl.glDisable(GL10.GL_LIGHTING);
@@ -367,8 +320,7 @@ public class CurlMesh {
 		if (DRAW_POLYGON_OUTLINES) {
 			gl.glColor4f(0.5f, 0.5f, 1.0f, 1.0f);
 			gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mVertices);
-			gl.glDrawElements(GL10.GL_LINES, mLineIndicesCount,
-					GL10.GL_UNSIGNED_SHORT, mLineIndices);
+			gl.glDrawArrays(GL10.GL_LINE_STRIP, 0, mVerticesCount);
 		}
 
 		if (DRAW_HELPERS) {
