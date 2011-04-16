@@ -8,7 +8,6 @@ import android.graphics.RectF;
 import android.opengl.GLSurfaceView;
 import android.opengl.GLU;
 import android.opengl.GLUtils;
-import android.util.Log;
 
 /**
  * Actual renderer class. Multiple bitmaps should be provided to get proper
@@ -76,17 +75,9 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		mViewRect.left = -ratio;
 		mViewRect.right = ratio;
 		
-		mCurlRect = mViewRect;
+		mCurlRect.set(mViewRect);
+		//mCurlRect.inset(.2f, -.2f);
 		mCurlMesh.setRect(mCurlRect);
-
-		//float gapW = Math.max(0.0f, (mViewRect.width() * (width - height))
-		//		/ height);
-		//float gapH = Math.max(0.0f, (-mViewRect.height() * (height - width))
-		//		/ width);
-		//mViewRect.top += gapH / 2;
-		//mViewRect.bottom -= gapH / 2;
-		//mViewRect.left -= gapW / 2;
-		//mViewRect.right += gapW / 2;
 
 		gl.glMatrixMode(GL10.GL_PROJECTION);
 		gl.glLoadIdentity();
@@ -101,10 +92,6 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	public void onSurfaceCreated(GL10 gl, EGLConfig config) {
 		gl.glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 		gl.glShadeModel(GL10.GL_SMOOTH);
-		// No need for depth test.
-		//gl.glClearDepthf(1.0f);
-		//gl.glEnable(GL10.GL_DEPTH_TEST);
-		//gl.glDepthFunc(GL10.GL_LEQUAL);
 		gl.glHint(GL10.GL_PERSPECTIVE_CORRECTION_HINT, GL10.GL_NICEST);
 
 		gl.glGenTextures(TEXTURE_COUNT, mTextureIds, 0);
@@ -119,6 +106,15 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_T,
 					GL10.GL_CLAMP_TO_EDGE);
 		}
+		
+		float light0Ambient[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_AMBIENT, light0Ambient, 0);
+		float light0Diffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_DIFFUSE, light0Diffuse, 0);
+		float light0Specular[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_SPECULAR, light0Specular, 0);
+		float light0Position[] = { 0f, 0f, 10f, 0f };
+		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_POSITION, light0Position, 0);
 	}
 
 	private void loadBitmaps(GL10 gl) {
@@ -173,7 +169,6 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 			curlPos.x -= directionVec.x * translate;
 			curlPos.y -= directionVec.y * translate;
 		} else {
-			// TODO: This is still not 100% accurate.
 			double angle = Math.PI * Math.sqrt(dist / curlLen);
 			double translate = radius * Math.sin(angle);
 			curlPos.x += directionVec.x * translate;

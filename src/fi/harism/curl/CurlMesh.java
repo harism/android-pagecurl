@@ -30,6 +30,14 @@ public class CurlMesh {
 	private FloatBuffer mNormals;
 	private int mVerticesCount;
 
+	private FloatBuffer mColors;
+	private FloatBuffer mShadowVertices;
+	private int mDropShadowCount;
+	private int mSelfShadowCount;
+
+	private static final float[] SHADOW_INNER_COLOR = { 0f, 0f, 0f, .7f };
+	private static final float[] SHADOW_OUTER_COLOR = { 0f, 0f, 0f, 0f };
+
 	private int mMaxCurlSplits;
 
 	private Vertex[] mRectangle = new Vertex[4];
@@ -81,8 +89,23 @@ public class CurlMesh {
 		nbb.order(ByteOrder.nativeOrder());
 		mNormals = nbb.asFloatBuffer();
 		mNormals.position(0);
+
+		int maxShadowVerticesCount = (mMaxCurlSplits + 1) * 2 * 2;
+		ByteBuffer cbb = ByteBuffer
+				.allocateDirect(maxShadowVerticesCount * 4 * 4);
+		cbb.order(ByteOrder.nativeOrder());
+		mColors = cbb.asFloatBuffer();
+		mColors.position(0);
+
+		ByteBuffer sibb = ByteBuffer
+				.allocateDirect(maxShadowVerticesCount * 2 * 4);
+		sibb.order(ByteOrder.nativeOrder());
+		mShadowVertices = sibb.asFloatBuffer();
+		mShadowVertices.position(0);
+
+		mDropShadowCount = mSelfShadowCount = 0;
 	}
-	
+
 	/**
 	 * Resets mesh to 'initial' state.
 	 */
@@ -90,15 +113,17 @@ public class CurlMesh {
 		mVertices.position(0);
 		mTexCoords.position(0);
 		mNormals.position(0);
-		for (int i=0; i<4; ++i) {
+		for (int i = 0; i < 4; ++i) {
 			addVertex(mRectangle[i]);
 		}
-		mVerticesCount=4;		
+		mVerticesCount = 4;
 		mVertices.position(0);
 		mTexCoords.position(0);
 		mNormals.position(0);
+
+		mDropShadowCount = mSelfShadowCount = 0;
 	}
-	
+
 	/**
 	 * Update mesh bounds size.
 	 */
@@ -183,6 +208,9 @@ public class CurlMesh {
 			rotatedVertices.add(j, v);
 		}
 
+		Vector<ShadowVertex> dropShadowVertices = new Vector<ShadowVertex>();
+		Vector<ShadowVertex> selfShadowVertices = new Vector<ShadowVertex>();
+
 		// Our rectangle lines/vertex indices.
 		int lines[] = { 0, 1, 2, 0, 3, 1, 3, 2 };
 		// Length of 'curl' curve.
@@ -248,6 +276,31 @@ public class CurlMesh {
 				v.rotateZ(curlAngle);
 				v.translate(curlPos.x, curlPos.y);
 				addVertex(v);
+
+				// Drop shadow is cast 'behind' the curl.
+				if (v.mPosZ > 0 && v.mPosZ <= radius) {
+					// TODO: There is some overlapping in some cases, not all
+					// vertices should be added to shadow.
+					ShadowVertex sv = new ShadowVertex();
+					sv.mPosX = v.mPosX;
+					sv.mPosY = v.mPosY;
+					sv.mPenumbraX = (v.mPosZ / 4) * -directionVec.x;
+					sv.mPenumbraY = (v.mPosZ / 4) * -directionVec.y;
+					int idx = (dropShadowVertices.size() + 1) / 2;
+					dropShadowVertices.add(idx, sv);
+				}
+				// Self shadow is cast partly over mesh.
+				if (v.mPosZ >= radius) {
+					// TODO: Shadow penumbra direction is not good, shouldn't be
+					// calculated using only directionVec.
+					ShadowVertex sv = new ShadowVertex();
+					sv.mPosX = v.mPosX;
+					sv.mPosY = v.mPosY;
+					sv.mPenumbraX = ((v.mPosZ - radius) / 4) * directionVec.x;
+					sv.mPenumbraY = ((v.mPosZ - radius) / 4) * directionVec.y;
+					int idx = (selfShadowVertices.size() + 1) / 2;
+					selfShadowVertices.add(idx, sv);
+				}
 			}
 
 			scanXmax = scanXmin;
@@ -257,13 +310,40 @@ public class CurlMesh {
 		mVertices.position(0);
 		mTexCoords.position(0);
 		mNormals.position(0);
+
+		// Add shadow Vertices.
+		mColors.position(0);
+		mShadowVertices.position(0);
+		mDropShadowCount = 0;
+		for (int i = 0; i < dropShadowVertices.size(); ++i) {
+			ShadowVertex sv = dropShadowVertices.get(i);
+			mShadowVertices.put((float) sv.mPosX);
+			mShadowVertices.put((float) sv.mPosY);
+			mShadowVertices.put((float) (sv.mPosX + sv.mPenumbraX));
+			mShadowVertices.put((float) (sv.mPosY + sv.mPenumbraY));
+			mColors.put(SHADOW_INNER_COLOR);
+			mColors.put(SHADOW_OUTER_COLOR);
+			mDropShadowCount += 2;
+		}
+		mSelfShadowCount = 0;
+		for (int i = 0; i < selfShadowVertices.size(); ++i) {
+			ShadowVertex sv = selfShadowVertices.get(i);
+			mShadowVertices.put((float) sv.mPosX);
+			mShadowVertices.put((float) sv.mPosY);
+			mShadowVertices.put((float) (sv.mPosX + sv.mPenumbraX));
+			mShadowVertices.put((float) (sv.mPosY + sv.mPenumbraY));
+			mColors.put(SHADOW_INNER_COLOR);
+			mColors.put(SHADOW_OUTER_COLOR);
+			mSelfShadowCount += 2;
+		}
+		mColors.position(0);
+		mShadowVertices.position(0);
 	}
 
 	/**
 	 * Adds vertex to buffers.
 	 */
 	private void addVertex(Vertex vertex) {
-		int pos = mVertices.position() / 3;
 		mVertices.put((float) vertex.mPosX);
 		mVertices.put((float) vertex.mPosY);
 		mVertices.put((float) vertex.mPosZ);
@@ -286,21 +366,13 @@ public class CurlMesh {
 
 		gl.glEnable(GL10.GL_LIGHTING);
 		gl.glEnable(GL10.GL_LIGHT0);
-		float light0Ambient[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_AMBIENT, light0Ambient, 0);
-		float light0Diffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_DIFFUSE, light0Diffuse, 0);
-		float light0Specular[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_SPECULAR, light0Specular, 0);
-		float light0Position[] = { 0f, 0f, 10f, 0f };
-		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_POSITION, light0Position, 0);
 
 		gl.glEnableClientState(GL10.GL_NORMAL_ARRAY);
 		gl.glNormalPointer(GL10.GL_FLOAT, 0, mNormals);
-		
+
 		gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
 		gl.glEnable(GL10.GL_BLEND);
-		
+
 		gl.glEnable(GL10.GL_TEXTURE_2D);
 		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, mVerticesCount);
 		gl.glDisable(GL10.GL_TEXTURE_2D);
@@ -329,7 +401,24 @@ public class CurlMesh {
 			gl.glDrawArrays(GL10.GL_LINES, 0, mHelperLinesCount * 2);
 		}
 
+		gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
+		gl.glColorPointer(4, GL10.GL_FLOAT, 0, mColors);
+		gl.glVertexPointer(2, GL10.GL_FLOAT, 0, mShadowVertices);
+		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, mDropShadowCount);
+		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, mDropShadowCount,
+				mSelfShadowCount);
+		gl.glDisableClientState(GL10.GL_COLOR_ARRAY);
 		gl.glDisableClientState(GL10.GL_VERTEX_ARRAY);
+	}
+
+	/**
+	 * Holder for shadow vertex information.
+	 */
+	private class ShadowVertex {
+		public double mPosX;
+		public double mPosY;
+		public double mPenumbraX;
+		public double mPenumbraY;
 	}
 
 	/**
