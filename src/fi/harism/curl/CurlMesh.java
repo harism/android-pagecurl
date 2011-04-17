@@ -9,7 +9,6 @@ import javax.microedition.khronos.opengles.GL10;
 
 import android.graphics.PointF;
 import android.graphics.RectF;
-import android.util.Log;
 
 /**
  * Class implementing actual curl.
@@ -23,9 +22,9 @@ public class CurlMesh {
 
 	private static final float[] SHADOW_INNER_COLOR = { 0f, 0f, 0f, .7f };
 	private static final float[] SHADOW_OUTER_COLOR = { 0f, 0f, 0f, 0f };
-	
+
 	private static final double BACKFACE_ALPHA = .4f;
-	
+
 	// For testing purposes.
 	private int mHelperLinesCount;
 	private FloatBuffer mHelperLines;
@@ -41,7 +40,6 @@ public class CurlMesh {
 	private FloatBuffer mShadowVertices;
 	private int mDropShadowCount;
 	private int mSelfShadowCount;
-
 
 	private int mMaxCurlSplits;
 
@@ -109,40 +107,6 @@ public class CurlMesh {
 		mShadowVertices.position(0);
 
 		mDropShadowCount = mSelfShadowCount = 0;
-	}
-
-	/**
-	 * Resets mesh to 'initial' state.
-	 */
-	public synchronized void reset() {
-		mVertices.position(0);
-		mTexCoords.position(0);
-		mColors.position(0);
-		for (int i = 0; i < 4; ++i) {
-			addVertex(mRectangle[i]);
-		}
-		mVerticesCountFront = 4;
-		mVerticesCountBack = 0;
-		mVertices.position(0);
-		mTexCoords.position(0);
-		mColors.position(0);
-
-		mDropShadowCount = mSelfShadowCount = 0;
-	}
-
-	/**
-	 * Update mesh bounds size.
-	 */
-	public synchronized void setRect(RectF r) {
-		mRectangle[0].mPosX = r.left;
-		mRectangle[0].mPosY = r.top;
-		mRectangle[1].mPosX = r.left;
-		mRectangle[1].mPosY = r.bottom;
-		mRectangle[2].mPosX = r.right;
-		mRectangle[2].mPosY = r.top;
-		mRectangle[3].mPosX = r.right;
-		mRectangle[3].mPosY = r.bottom;
-		reset();
 	}
 
 	/**
@@ -277,7 +241,7 @@ public class CurlMesh {
 					v.mPosZ = radius + (radius * -Math.sin(rotY));
 					v.mColor = Math.sqrt(Math.cos(rotY) + 1);
 				}
-				
+
 				// TODO: What if radius == 0?
 				if (v.mPosZ <= radius) {
 					mVerticesCountFront++;
@@ -290,7 +254,7 @@ public class CurlMesh {
 				v.rotateZ(curlAngle);
 				v.translate(curlPos.x, curlPos.y);
 				addVertex(v);
-				
+
 				// Drop shadow is cast 'behind' the curl.
 				if (v.mPosZ > 0 && v.mPosZ <= radius) {
 					// TODO: There is some overlapping in some cases, not all
@@ -354,21 +318,6 @@ public class CurlMesh {
 	}
 
 	/**
-	 * Adds vertex to buffers.
-	 */
-	private void addVertex(Vertex vertex) {
-		mVertices.put((float) vertex.mPosX);
-		mVertices.put((float) vertex.mPosY);
-		mVertices.put((float) vertex.mPosZ);
-		mTexCoords.put((float) vertex.mTexX);
-		mTexCoords.put((float) vertex.mTexY);
-		mColors.put((float) vertex.mColor);
-		mColors.put((float) vertex.mColor);
-		mColors.put((float) vertex.mColor);
-		mColors.put((float) vertex.mAlpha);
-	}
-
-	/**
 	 * Draw our mesh.
 	 */
 	public synchronized void draw(GL10 gl) {
@@ -376,15 +325,15 @@ public class CurlMesh {
 		gl.glEnable(GL10.GL_BLEND);
 		gl.glEnableClientState(GL10.GL_VERTEX_ARRAY);
 		gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mVertices);
-		
+
 		// Enable texture coordinates.
 		gl.glEnableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
 		gl.glTexCoordPointer(2, GL10.GL_FLOAT, 0, mTexCoords);
-		
+
 		// Enable color array.
 		gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
 		gl.glColorPointer(4, GL10.GL_FLOAT, 0, mColors);
-		
+
 		// Draw blank / 'white' front facing vertices.
 		gl.glBlendFunc(GL10.GL_ONE, GL10.GL_ZERO);
 		gl.glDisable(GL10.GL_TEXTURE_2D);
@@ -396,13 +345,15 @@ public class CurlMesh {
 		// Draw blank / 'white' back facing vertices.
 		gl.glDisable(GL10.GL_TEXTURE_2D);
 		gl.glBlendFunc(GL10.GL_ONE, GL10.GL_ZERO);
-		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, mVerticesCountFront, mVerticesCountBack);
+		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, mVerticesCountFront,
+				mVerticesCountBack);
 		// Draw back facing texture.
 		gl.glEnable(GL10.GL_TEXTURE_2D);
 		gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
-		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, mVerticesCountFront, mVerticesCountBack);
+		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, mVerticesCountFront,
+				mVerticesCountBack);
 		gl.glDisable(GL10.GL_TEXTURE_2D);
-		
+
 		// Disable textures and color array.
 		gl.glDisableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
 		gl.glDisableClientState(GL10.GL_COLOR_ARRAY);
@@ -434,6 +385,55 @@ public class CurlMesh {
 				mSelfShadowCount);
 		gl.glDisableClientState(GL10.GL_COLOR_ARRAY);
 		gl.glDisableClientState(GL10.GL_VERTEX_ARRAY);
+	}
+
+	/**
+	 * Resets mesh to 'initial' state.
+	 */
+	public synchronized void reset() {
+		mVertices.position(0);
+		mTexCoords.position(0);
+		mColors.position(0);
+		for (int i = 0; i < 4; ++i) {
+			addVertex(mRectangle[i]);
+		}
+		mVerticesCountFront = 4;
+		mVerticesCountBack = 0;
+		mVertices.position(0);
+		mTexCoords.position(0);
+		mColors.position(0);
+
+		mDropShadowCount = mSelfShadowCount = 0;
+	}
+
+	/**
+	 * Update mesh bounds size.
+	 */
+	public synchronized void setRect(RectF r) {
+		mRectangle[0].mPosX = r.left;
+		mRectangle[0].mPosY = r.top;
+		mRectangle[1].mPosX = r.left;
+		mRectangle[1].mPosY = r.bottom;
+		mRectangle[2].mPosX = r.right;
+		mRectangle[2].mPosY = r.top;
+		mRectangle[3].mPosX = r.right;
+		mRectangle[3].mPosY = r.bottom;
+		reset();
+	}
+
+	/**
+	 * Adds vertex to buffers.
+	 */
+	private void addVertex(Vertex vertex) {
+		mVertices.put((float) vertex.mPosX);
+		mVertices.put((float) vertex.mPosY);
+		mVertices.put((float) vertex.mPosZ);
+		mTexCoords.put((float) vertex.mTexX);
+		mTexCoords.put((float) vertex.mTexY);
+		mColors.put((float) vertex.mColor);
+		mColors.put((float) vertex.mColor);
+		mColors.put((float) vertex.mColor);
+		mColors.put((float) vertex.mAlpha);
 	}
 
 	/**
@@ -479,11 +479,6 @@ public class CurlMesh {
 			mAlpha = vertex.mAlpha;
 		}
 
-		public void translate(double dx, double dy) {
-			mPosX += dx;
-			mPosY += dy;
-		}
-
 		public void rotateZ(double theta) {
 			double cos = Math.cos(theta);
 			double sin = Math.sin(theta);
@@ -491,6 +486,11 @@ public class CurlMesh {
 			double y = mPosX * -sin + mPosY * cos;
 			mPosX = x;
 			mPosY = y;
+		}
+
+		public void translate(double dx, double dy) {
+			mPosX += dx;
+			mPosY += dy;
 		}
 	}
 }

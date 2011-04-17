@@ -9,26 +9,26 @@ import android.os.Bundle;
  * @author harism
  */
 public class CurlActivity extends Activity {
-	
+
 	private CurlView mCurlView;
-	
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.main);
-        mCurlView = (CurlView) findViewById(R.id.curl);        
-    }
-    
-    @Override
-    public void onPause() {
-    	super.onPause();
-    	mCurlView.onPause();
-    }
-    
-    @Override
-    public void onResume() {
-    	super.onResume();
-    	mCurlView.onResume();
-    }
-    
+
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.main);
+		mCurlView = (CurlView) findViewById(R.id.curl);
+	}
+
+	@Override
+	public void onPause() {
+		super.onPause();
+		mCurlView.onPause();
+	}
+
+	@Override
+	public void onResume() {
+		super.onResume();
+		mCurlView.onResume();
+	}
+
 }

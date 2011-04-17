@@ -19,7 +19,7 @@ public class CurlView extends GLSurfaceView {
 
 	// Actual renderer.
 	private CurlRenderer mCurlRenderer;
-	
+
 	/**
 	 * Default constructor.
 	 */
@@ -27,7 +27,7 @@ public class CurlView extends GLSurfaceView {
 		super(ctx);
 		init(ctx);
 	}
-	
+
 	/**
 	 * Default constructor.
 	 */
@@ -35,14 +35,32 @@ public class CurlView extends GLSurfaceView {
 		super(ctx, attrs);
 		init(ctx);
 	}
-	
+
 	/**
 	 * Default constructor.
 	 */
 	public CurlView(Context ctx, AttributeSet attrs, int defStyle) {
 		this(ctx, attrs);
 	}
-	
+
+	@Override
+	public void onSizeChanged(int w, int h, int ow, int oh) {
+		super.onSizeChanged(w, h, ow, oh);
+
+		// Create Bitmap for renderer.
+		Drawable d = getResources().getDrawable(R.drawable.obama);
+		d.setBounds(0, 0, w, h);
+		Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+		b.eraseColor(0x00000000);
+		Canvas c = new Canvas(b);
+		d.draw(c);
+
+		// b.eraseColor(0xFFFFFFFF);
+
+		mCurlRenderer.setBitmap(b);
+		requestRender();
+	}
+
 	/**
 	 * Initialize method.
 	 */
@@ -52,30 +70,12 @@ public class CurlView extends GLSurfaceView {
 		setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 		this.setOnTouchListener(new TouchListener());
 	}
-	
-	@Override
-	public void onSizeChanged(int w, int h, int ow, int oh) {
-		super.onSizeChanged(w, h, ow, oh);
-		
-		// Create Bitmap for renderer.
-		Drawable d = getResources().getDrawable(R.drawable.obama);
-		d.setBounds(0, 0, w, h);
-		Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-		b.eraseColor(0x00000000);
-		Canvas c = new Canvas(b);
-		d.draw(c);
-		
-		//b.eraseColor(0xFFFFFFFF);
-		
-		mCurlRenderer.setBitmap(b);
-		requestRender();
-	}
-	
+
 	/**
 	 * Touch listener.
 	 */
 	private class TouchListener implements View.OnTouchListener {
-		
+
 		// ACTION_DOWN coordinates.
 		private PointF mStartCoords = new PointF();
 
@@ -92,7 +92,7 @@ public class CurlView extends GLSurfaceView {
 			}
 			return true;
 		}
-		
+
 	}
-	
+
 }

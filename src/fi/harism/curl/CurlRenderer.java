@@ -2,6 +2,7 @@ package fi.harism.curl;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
+
 import android.graphics.Bitmap;
 import android.graphics.PointF;
 import android.graphics.RectF;
@@ -41,6 +42,60 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		mCurlMesh.reset();
 	}
 
+	public void curl(PointF startPoint, PointF curlPoint) {
+		// Map position to 'render' coordinates.
+		PointF curlPos = new PointF();
+		curlPos.x = mViewRect.left
+				+ (mViewRect.width() * curlPoint.x / mViewportWidth);
+		curlPos.y = mViewRect.top
+				- (-mViewRect.height() * curlPoint.y / mViewportHeight);
+
+		// Map start point to 'render' coordinates.
+		PointF startPos = new PointF();
+		startPos.x = mViewRect.left
+				+ (mViewRect.width() * startPoint.x / mViewportWidth);
+		startPos.y = mViewRect.top
+				- (-mViewRect.height() * startPoint.y / mViewportHeight);
+
+		// Map startPos to view range.
+		startPos.x = startPos.x < mViewRect.left ? mViewRect.left : startPos.x;
+		startPos.x = startPos.x > mViewRect.right ? mViewRect.right
+				: startPos.x;
+		startPos.y = startPos.y < mViewRect.bottom ? mViewRect.bottom
+				: startPos.y;
+		startPos.y = startPos.y > mViewRect.top ? mViewRect.top : startPos.y;
+		if (Math.abs(startPos.x) < Math.abs(startPos.y)) {
+			startPos.y = startPos.y < 0 ? mViewRect.bottom : mViewRect.top;
+		} else {
+			startPos.x = startPos.x < 0 ? mViewRect.left : mViewRect.right;
+		}
+
+		PointF directionVec = new PointF(curlPos.x - startPos.x, curlPos.y
+				- startPos.y);
+
+		double radius = 0.3f;
+		double curlLen = radius * Math.PI;
+		double dist = Math.sqrt(directionVec.x * directionVec.x
+				+ directionVec.y * directionVec.y);
+
+		// Normalize direction vector.
+		directionVec.x = (float) (directionVec.x / dist);
+		directionVec.y = (float) (directionVec.y / dist);
+
+		if (dist >= curlLen) {
+			double translate = (dist - curlLen) / 2;
+			curlPos.x -= directionVec.x * translate;
+			curlPos.y -= directionVec.y * translate;
+		} else {
+			double angle = Math.PI * Math.sqrt(dist / curlLen);
+			double translate = radius * Math.sin(angle);
+			curlPos.x += directionVec.x * translate;
+			curlPos.y += directionVec.y * translate;
+		}
+
+		mCurlMesh.curl(curlPos, directionVec, radius);
+	}
+
 	@Override
 	public void onDrawFrame(GL10 gl) {
 		if (mBitmapsChanged) {
@@ -68,15 +123,15 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		gl.glViewport(0, 0, width, height);
 		mViewportWidth = width;
 		mViewportHeight = height;
-		
-		float ratio = (float)width / height;
+
+		float ratio = (float) width / height;
 		mViewRect.top = 1.0f;
 		mViewRect.bottom = -1.0f;
 		mViewRect.left = -ratio;
 		mViewRect.right = ratio;
-		
+
 		mCurlRect.set(mViewRect);
-		//mCurlRect.inset(.2f, -.2f);
+		// mCurlRect.inset(.2f, -.2f);
 		mCurlMesh.setRect(mCurlRect);
 
 		gl.glMatrixMode(GL10.GL_PROJECTION);
@@ -105,7 +160,15 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 					GL10.GL_CLAMP_TO_EDGE);
 			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_T,
 					GL10.GL_CLAMP_TO_EDGE);
-		}		
+		}
+	}
+
+	/**
+	 * Update bitmaps/textures.
+	 */
+	public void setBitmap(Bitmap bitmap) {
+		mBitmaps[0] = bitmap;
+		mBitmapsChanged = true;
 	}
 
 	private void loadBitmaps(GL10 gl) {
@@ -115,65 +178,5 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 				GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, mBitmaps[i], 0);
 			}
 		}
-	}
-
-	public void curl(PointF startPoint, PointF curlPoint) {
-		// Map position to 'render' coordinates.
-		PointF curlPos = new PointF();
-		curlPos.x = mViewRect.left
-				+ (mViewRect.width() * curlPoint.x / mViewportWidth);
-		curlPos.y = mViewRect.top
-				- (-mViewRect.height() * curlPoint.y / mViewportHeight);
-
-		// Map start point to 'render' coordinates.
-		PointF startPos = new PointF();
-		startPos.x = mViewRect.left
-				+ (mViewRect.width() * startPoint.x / mViewportWidth);
-		startPos.y = mViewRect.top
-				- (-mViewRect.height() * startPoint.y / mViewportHeight);
-
-		// Map startPos to view range.
-		startPos.x = startPos.x < mViewRect.left ? mViewRect.left : startPos.x;
-		startPos.x = startPos.x > mViewRect.right ? mViewRect.right : startPos.x;
-		startPos.y = startPos.y < mViewRect.bottom ? mViewRect.bottom : startPos.y;
-		startPos.y = startPos.y > mViewRect.top ? mViewRect.top : startPos.y;
-		if (Math.abs(startPos.x) < Math.abs(startPos.y)) {
-			startPos.y = startPos.y < 0 ? mViewRect.bottom : mViewRect.top;
-		} else {
-			startPos.x = startPos.x < 0 ? mViewRect.left : mViewRect.right;
-		}
-
-		PointF directionVec = new PointF(curlPos.x - startPos.x, curlPos.y
-				- startPos.y);
-
-		double radius = 0.3f;
-		double curlLen = radius * Math.PI;
-		double dist = Math.sqrt(directionVec.x * directionVec.x
-				+ directionVec.y * directionVec.y);
-		
-		// Normalize direction vector.
-		directionVec.x = (float) (directionVec.x / dist);
-		directionVec.y = (float) (directionVec.y / dist);
-		
-		if (dist >= curlLen) {
-			double translate = (dist - curlLen) / 2;
-			curlPos.x -= directionVec.x * translate;
-			curlPos.y -= directionVec.y * translate;
-		} else {
-			double angle = Math.PI * Math.sqrt(dist / curlLen);
-			double translate = radius * Math.sin(angle);
-			curlPos.x += directionVec.x * translate;
-			curlPos.y += directionVec.y * translate;
-		}
-
-		mCurlMesh.curl(curlPos, directionVec, radius);
-	}
-
-	/**
-	 * Update bitmaps/textures.
-	 */
-	public void setBitmap(Bitmap bitmap) {
-		mBitmaps[0] = bitmap;
-		mBitmapsChanged = true;
 	}
 }
