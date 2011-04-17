@@ -9,6 +9,7 @@ import javax.microedition.khronos.opengles.GL10;
 
 import android.graphics.PointF;
 import android.graphics.RectF;
+import android.util.Log;
 
 /**
  * Class implementing actual curl.
@@ -20,6 +21,11 @@ public class CurlMesh {
 	private static final boolean DRAW_HELPERS = false;
 	private static final boolean DRAW_POLYGON_OUTLINES = false;
 
+	private static final float[] SHADOW_INNER_COLOR = { 0f, 0f, 0f, .7f };
+	private static final float[] SHADOW_OUTER_COLOR = { 0f, 0f, 0f, 0f };
+	
+	private static final double BACKFACE_ALPHA = .4f;
+	
 	// For testing purposes.
 	private int mHelperLinesCount;
 	private FloatBuffer mHelperLines;
@@ -27,16 +33,15 @@ public class CurlMesh {
 	// Buffers for feeding rasterizer.
 	private FloatBuffer mVertices;
 	private FloatBuffer mTexCoords;
-	private FloatBuffer mNormals;
-	private int mVerticesCount;
-
 	private FloatBuffer mColors;
+	private int mVerticesCountFront;
+	private int mVerticesCountBack;
+
+	private FloatBuffer mShadowColors;
 	private FloatBuffer mShadowVertices;
 	private int mDropShadowCount;
 	private int mSelfShadowCount;
 
-	private static final float[] SHADOW_INNER_COLOR = { 0f, 0f, 0f, .7f };
-	private static final float[] SHADOW_OUTER_COLOR = { 0f, 0f, 0f, 0f };
 
 	private int mMaxCurlSplits;
 
@@ -85,17 +90,17 @@ public class CurlMesh {
 		mTexCoords = tbb.asFloatBuffer();
 		mTexCoords.position(0);
 
-		ByteBuffer nbb = ByteBuffer.allocateDirect(maxVerticesCount * 3 * 4);
-		nbb.order(ByteOrder.nativeOrder());
-		mNormals = nbb.asFloatBuffer();
-		mNormals.position(0);
-
-		int maxShadowVerticesCount = (mMaxCurlSplits + 1) * 2 * 2;
-		ByteBuffer cbb = ByteBuffer
-				.allocateDirect(maxShadowVerticesCount * 4 * 4);
+		ByteBuffer cbb = ByteBuffer.allocateDirect(maxVerticesCount * 4 * 4);
 		cbb.order(ByteOrder.nativeOrder());
 		mColors = cbb.asFloatBuffer();
 		mColors.position(0);
+
+		int maxShadowVerticesCount = (mMaxCurlSplits + 1) * 2 * 2;
+		ByteBuffer scbb = ByteBuffer
+				.allocateDirect(maxShadowVerticesCount * 4 * 4);
+		scbb.order(ByteOrder.nativeOrder());
+		mShadowColors = scbb.asFloatBuffer();
+		mShadowColors.position(0);
 
 		ByteBuffer sibb = ByteBuffer
 				.allocateDirect(maxShadowVerticesCount * 2 * 4);
@@ -112,14 +117,15 @@ public class CurlMesh {
 	public synchronized void reset() {
 		mVertices.position(0);
 		mTexCoords.position(0);
-		mNormals.position(0);
+		mColors.position(0);
 		for (int i = 0; i < 4; ++i) {
 			addVertex(mRectangle[i]);
 		}
-		mVerticesCount = 4;
+		mVerticesCountFront = 4;
+		mVerticesCountBack = 0;
 		mVertices.position(0);
 		mTexCoords.position(0);
-		mNormals.position(0);
+		mColors.position(0);
 
 		mDropShadowCount = mSelfShadowCount = 0;
 	}
@@ -176,7 +182,7 @@ public class CurlMesh {
 		// Actual 'curl' implementation starts here.
 		mVertices.position(0);
 		mTexCoords.position(0);
-		mNormals.position(0);
+		mColors.position(0);
 
 		// Calculate curl direction.
 		double curlAngle = Math.acos(directionVec.x);
@@ -208,6 +214,7 @@ public class CurlMesh {
 			rotatedVertices.add(j, v);
 		}
 
+		mVerticesCountFront = mVerticesCountBack = 0;
 		Vector<ShadowVertex> dropShadowVertices = new Vector<ShadowVertex>();
 		Vector<ShadowVertex> selfShadowVertices = new Vector<ShadowVertex>();
 
@@ -268,15 +275,22 @@ public class CurlMesh {
 					// rotY = -rotY;
 					v.mPosX = radius * Math.cos(rotY);
 					v.mPosZ = radius + (radius * -Math.sin(rotY));
-					v.mNormalX = Math.cos(rotY);
-					v.mNormalZ = Math.abs(Math.sin(rotY));
+					v.mColor = (Math.cos(rotY) / 1.1f) + 1;
+				}
+				
+				// TODO: What if radius == 0?
+				if (v.mPosZ <= radius) {
+					mVerticesCountFront++;
+				} else {
+					mVerticesCountBack++;
+					v.mAlpha = BACKFACE_ALPHA;
 				}
 
 				// Rotate vertex back to 'world' coordinates.
 				v.rotateZ(curlAngle);
 				v.translate(curlPos.x, curlPos.y);
 				addVertex(v);
-
+				
 				// Drop shadow is cast 'behind' the curl.
 				if (v.mPosZ > 0 && v.mPosZ <= radius) {
 					// TODO: There is some overlapping in some cases, not all
@@ -306,13 +320,12 @@ public class CurlMesh {
 			scanXmax = scanXmin;
 		}
 
-		mVerticesCount = mVertices.position() / 3;
 		mVertices.position(0);
 		mTexCoords.position(0);
-		mNormals.position(0);
+		mColors.position(0);
 
 		// Add shadow Vertices.
-		mColors.position(0);
+		mShadowColors.position(0);
 		mShadowVertices.position(0);
 		mDropShadowCount = 0;
 		for (int i = 0; i < dropShadowVertices.size(); ++i) {
@@ -321,8 +334,8 @@ public class CurlMesh {
 			mShadowVertices.put((float) sv.mPosY);
 			mShadowVertices.put((float) (sv.mPosX + sv.mPenumbraX));
 			mShadowVertices.put((float) (sv.mPosY + sv.mPenumbraY));
-			mColors.put(SHADOW_INNER_COLOR);
-			mColors.put(SHADOW_OUTER_COLOR);
+			mShadowColors.put(SHADOW_INNER_COLOR);
+			mShadowColors.put(SHADOW_OUTER_COLOR);
 			mDropShadowCount += 2;
 		}
 		mSelfShadowCount = 0;
@@ -332,11 +345,11 @@ public class CurlMesh {
 			mShadowVertices.put((float) sv.mPosY);
 			mShadowVertices.put((float) (sv.mPosX + sv.mPenumbraX));
 			mShadowVertices.put((float) (sv.mPosY + sv.mPenumbraY));
-			mColors.put(SHADOW_INNER_COLOR);
-			mColors.put(SHADOW_OUTER_COLOR);
+			mShadowColors.put(SHADOW_INNER_COLOR);
+			mShadowColors.put(SHADOW_OUTER_COLOR);
 			mSelfShadowCount += 2;
 		}
-		mColors.position(0);
+		mShadowColors.position(0);
 		mShadowVertices.position(0);
 	}
 
@@ -349,42 +362,55 @@ public class CurlMesh {
 		mVertices.put((float) vertex.mPosZ);
 		mTexCoords.put((float) vertex.mTexX);
 		mTexCoords.put((float) vertex.mTexY);
-		mNormals.put((float) vertex.mNormalX);
-		mNormals.put((float) vertex.mNormalY);
-		mNormals.put((float) vertex.mNormalZ);
+		
+		Log.d("COLOR", "CLOR=" + vertex.mColor);
+		mColors.put((float) vertex.mColor);
+		mColors.put((float) vertex.mColor);
+		mColors.put((float) vertex.mColor);
+		mColors.put((float) vertex.mAlpha);
 	}
 
 	/**
 	 * Draw our mesh.
 	 */
 	public synchronized void draw(GL10 gl) {
+		// Some 'global' settings.
+		gl.glEnable(GL10.GL_BLEND);
 		gl.glEnableClientState(GL10.GL_VERTEX_ARRAY);
 		gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mVertices);
-
+		
+		// Enable texture coordinates.
 		gl.glEnableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
 		gl.glTexCoordPointer(2, GL10.GL_FLOAT, 0, mTexCoords);
-
-		gl.glEnable(GL10.GL_LIGHTING);
-		gl.glEnable(GL10.GL_LIGHT0);
-
-		gl.glEnableClientState(GL10.GL_NORMAL_ARRAY);
-		gl.glNormalPointer(GL10.GL_FLOAT, 0, mNormals);
-
-		gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
-		gl.glEnable(GL10.GL_BLEND);
-
-		gl.glEnable(GL10.GL_TEXTURE_2D);
-		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, mVerticesCount);
+		
+		// Enable color array.
+		gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
+		gl.glColorPointer(4, GL10.GL_FLOAT, 0, mColors);
+		
+		// Draw blank / 'white' front facing vertices.
+		gl.glBlendFunc(GL10.GL_ONE, GL10.GL_ZERO);
 		gl.glDisable(GL10.GL_TEXTURE_2D);
-
-		gl.glDisable(GL10.GL_LIGHTING);
-		gl.glDisable(GL10.GL_LIGHT0);
-		gl.glDisableClientState(GL10.GL_NORMAL_ARRAY);
+		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, mVerticesCountFront);
+		// Draw front facing texture.
+		gl.glEnable(GL10.GL_TEXTURE_2D);
+		gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
+		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, mVerticesCountFront);
+		// Draw blank / 'white' back facing vertices.
+		gl.glDisable(GL10.GL_TEXTURE_2D);
+		gl.glBlendFunc(GL10.GL_ONE, GL10.GL_ZERO);
+		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, mVerticesCountFront, mVerticesCountBack);
+		// Draw back facing texture.
+		gl.glEnable(GL10.GL_TEXTURE_2D);
+		gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
+		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, mVerticesCountFront, mVerticesCountBack);
+		gl.glDisable(GL10.GL_TEXTURE_2D);
+		
+		// Disable textures and color array.
 		gl.glDisableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
+		gl.glDisableClientState(GL10.GL_COLOR_ARRAY);
 
 		if (DRAW_POLYGON_OUTLINES || DRAW_HELPERS) {
 			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
-			gl.glEnable(GL10.GL_BLEND);
 			gl.glEnable(GL10.GL_LINE_SMOOTH);
 			gl.glLineWidth(1.0f);
 		}
@@ -392,7 +418,7 @@ public class CurlMesh {
 		if (DRAW_POLYGON_OUTLINES) {
 			gl.glColor4f(0.5f, 0.5f, 1.0f, 1.0f);
 			gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mVertices);
-			gl.glDrawArrays(GL10.GL_LINE_STRIP, 0, mVerticesCount);
+			gl.glDrawArrays(GL10.GL_LINE_STRIP, 0, mVerticesCountFront);
 		}
 
 		if (DRAW_HELPERS) {
@@ -401,8 +427,9 @@ public class CurlMesh {
 			gl.glDrawArrays(GL10.GL_LINES, 0, mHelperLinesCount * 2);
 		}
 
+		gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
 		gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
-		gl.glColorPointer(4, GL10.GL_FLOAT, 0, mColors);
+		gl.glColorPointer(4, GL10.GL_FLOAT, 0, mShadowColors);
 		gl.glVertexPointer(2, GL10.GL_FLOAT, 0, mShadowVertices);
 		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, mDropShadowCount);
 		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, mDropShadowCount,
@@ -430,9 +457,8 @@ public class CurlMesh {
 		public double mPosZ;
 		public double mTexX;
 		public double mTexY;
-		public double mNormalX;
-		public double mNormalY;
-		public double mNormalZ;
+		public double mColor;
+		public double mAlpha;
 
 		public Vertex(double posX, double posY, double posZ, double texX,
 				double texY) {
@@ -441,8 +467,8 @@ public class CurlMesh {
 			mPosZ = posZ;
 			mTexX = texX;
 			mTexY = texY;
-			mNormalX = mNormalY = 0;
-			mNormalZ = 1.0f;
+			mColor = 1.0f;
+			mAlpha = 1.0f;
 		}
 
 		public Vertex(Vertex vertex) {
@@ -451,9 +477,8 @@ public class CurlMesh {
 			mPosZ = vertex.mPosZ;
 			mTexX = vertex.mTexX;
 			mTexY = vertex.mTexY;
-			mNormalX = vertex.mNormalX;
-			mNormalY = vertex.mNormalY;
-			mNormalZ = vertex.mNormalZ;
+			mColor = vertex.mColor;
+			mAlpha = vertex.mAlpha;
 		}
 
 		public void translate(double dx, double dy) {
@@ -468,11 +493,6 @@ public class CurlMesh {
 			double y = mPosX * -sin + mPosY * cos;
 			mPosX = x;
 			mPosY = y;
-
-			x = mNormalX * cos + mNormalY * sin;
-			y = mNormalX * -sin + mPosY * cos;
-			mNormalX = x;
-			mNormalY = y;
 		}
 	}
 }

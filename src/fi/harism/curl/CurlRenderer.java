@@ -105,16 +105,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 					GL10.GL_CLAMP_TO_EDGE);
 			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_T,
 					GL10.GL_CLAMP_TO_EDGE);
-		}
-		
-		float light0Ambient[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_AMBIENT, light0Ambient, 0);
-		float light0Diffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_DIFFUSE, light0Diffuse, 0);
-		float light0Specular[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_SPECULAR, light0Specular, 0);
-		float light0Position[] = { 0f, 0f, 10f, 0f };
-		gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_POSITION, light0Position, 0);
+		}		
 	}
 
 	private void loadBitmaps(GL10 gl) {
