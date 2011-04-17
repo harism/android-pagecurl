@@ -275,7 +275,7 @@ public class CurlMesh {
 					// rotY = -rotY;
 					v.mPosX = radius * Math.cos(rotY);
 					v.mPosZ = radius + (radius * -Math.sin(rotY));
-					v.mColor = (Math.cos(rotY) / 1.1f) + 1;
+					v.mColor = Math.sqrt(Math.cos(rotY) + 1);
 				}
 				
 				// TODO: What if radius == 0?
@@ -362,8 +362,6 @@ public class CurlMesh {
 		mVertices.put((float) vertex.mPosZ);
 		mTexCoords.put((float) vertex.mTexX);
 		mTexCoords.put((float) vertex.mTexY);
-		
-		Log.d("COLOR", "CLOR=" + vertex.mColor);
 		mColors.put((float) vertex.mColor);
 		mColors.put((float) vertex.mColor);
 		mColors.put((float) vertex.mColor);
