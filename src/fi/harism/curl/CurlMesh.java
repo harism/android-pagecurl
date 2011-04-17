@@ -55,18 +55,12 @@ public class CurlMesh {
 	 * @param maxCurlSplits
 	 *            Maximum number curl can be divided into.
 	 */
-	public CurlMesh(RectF rect, RectF texRect, int maxCurlSplits) {
-		// We really must have at least one split line.
-		mMaxCurlSplits = maxCurlSplits < 1 ? 1 : maxCurlSplits;
+	public CurlMesh(int maxCurlSplits) {
+		mMaxCurlSplits = maxCurlSplits;
 
-		mRectangle[0] = new Vertex(rect.left, rect.top, 0, texRect.left,
-				texRect.top);
-		mRectangle[1] = new Vertex(rect.left, rect.bottom, 0, texRect.left,
-				texRect.bottom);
-		mRectangle[2] = new Vertex(rect.right, rect.top, 0, texRect.right,
-				texRect.top);
-		mRectangle[3] = new Vertex(rect.right, rect.bottom, 0, texRect.right,
-				texRect.bottom);
+		for (int i=0; i<4; ++i) {
+			mRectangle[i] = new Vertex();
+		}
 
 		if (DRAW_HELPERS) {
 			mHelperLinesCount = 3;
@@ -188,7 +182,9 @@ public class CurlMesh {
 		double curlLength = Math.PI * radius;
 		// Calculate scan lines.
 		Vector<Double> scanLines = new Vector<Double>();
-		scanLines.add((double) 0);
+		if (mMaxCurlSplits > 0) {
+			scanLines.add((double) 0);
+		}
 		for (int i = 1; i < mMaxCurlSplits; ++i) {
 			scanLines.add((-curlLength * i) / (mMaxCurlSplits - 1));
 		}
@@ -333,7 +329,7 @@ public class CurlMesh {
 		// Enable color array.
 		gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
 		gl.glColorPointer(4, GL10.GL_FLOAT, 0, mColors);
-
+		
 		// Draw blank / 'white' front facing vertices.
 		gl.glBlendFunc(GL10.GL_ONE, GL10.GL_ZERO);
 		gl.glDisable(GL10.GL_TEXTURE_2D);
@@ -407,7 +403,7 @@ public class CurlMesh {
 	}
 
 	/**
-	 * Update mesh bounds size.
+	 * Update mesh bounds.
 	 */
 	public synchronized void setRect(RectF r) {
 		mRectangle[0].mPosX = r.left;
@@ -418,7 +414,20 @@ public class CurlMesh {
 		mRectangle[2].mPosY = r.top;
 		mRectangle[3].mPosX = r.right;
 		mRectangle[3].mPosY = r.bottom;
-		reset();
+	}
+	
+	/**
+	 * Update texture bounds.
+	 */
+	public synchronized void setTexRect(RectF r) {
+		mRectangle[0].mTexX = r.left;
+		mRectangle[0].mTexY = r.top;
+		mRectangle[1].mTexX = r.left;
+		mRectangle[1].mTexY = r.bottom;
+		mRectangle[2].mTexX = r.right;
+		mRectangle[2].mTexY = r.top;
+		mRectangle[3].mTexX = r.right;
+		mRectangle[3].mTexY = r.bottom;
 	}
 
 	/**
@@ -458,15 +467,9 @@ public class CurlMesh {
 		public double mColor;
 		public double mAlpha;
 
-		public Vertex(double posX, double posY, double posZ, double texX,
-				double texY) {
-			mPosX = posX;
-			mPosY = posY;
-			mPosZ = posZ;
-			mTexX = texX;
-			mTexY = texY;
-			mColor = 1.0f;
-			mAlpha = 1.0f;
+		public Vertex() {
+			mPosX = mPosY = mPosZ = mTexX = mTexY = 0;
+			mColor = mAlpha = 1;
 		}
 
 		public Vertex(Vertex vertex) {

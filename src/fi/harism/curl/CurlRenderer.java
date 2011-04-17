@@ -4,6 +4,7 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.PointF;
 import android.graphics.RectF;
 import android.opengl.GLSurfaceView;
@@ -18,6 +19,14 @@ import android.opengl.GLUtils;
  */
 public class CurlRenderer implements GLSurfaceView.Renderer {
 
+	public static final int SHOW_ONE_PAGE = 1;
+	public static final int SHOW_TWO_PAGES = 2;
+
+	public static final int PAGE_CURRENT = 0;
+	public static final int PAGE_LEFT = 1;
+	public static final int PAGE_RIGHT = 2;
+
+	private int mViewMode = SHOW_ONE_PAGE;
 	// Rect for render area.
 	private RectF mViewRect = new RectF();
 	// Screen size.
@@ -25,75 +34,75 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	private int mViewportHeight;
 
 	// Flag for updating textures from bitmaps.
+	private static final int TEXTURE_COUNT = 3;
 	private boolean mBitmapsChanged = false;
-	private static final int TEXTURE_COUNT = 1;
 	private int[] mTextureIds = new int[TEXTURE_COUNT];
 	private Bitmap[] mBitmaps = new Bitmap[TEXTURE_COUNT];
 
-	// Curl mesh rect.
-	private RectF mCurlRect = new RectF(-1.0f, 1.0f, 1.0f, -1.0f);
-	private CurlMesh mCurlMesh;
+	// Curl meshes used for static and dynamic rendering.
+	private CurlMesh[] mCurlMeshes;
+
+	private boolean mBackgroundColorChanged = false;
+	private int mBackgroundColor;
+
+	private CurlRendererObserver mObserver;
 
 	/**
 	 * Basic constructor.
 	 */
-	public CurlRenderer() {
-		mCurlMesh = new CurlMesh(mCurlRect, new RectF(0, 0, 1, 1), 10);
-		mCurlMesh.reset();
+	public CurlRenderer(CurlRendererObserver observer) {
+		mObserver = observer;
+
+		mCurlMeshes = new CurlMesh[TEXTURE_COUNT];
+		mCurlMeshes[PAGE_CURRENT] = new CurlMesh(10);
+		mCurlMeshes[PAGE_CURRENT].setTexRect(new RectF(0, 0, 1, 1));
+		mCurlMeshes[PAGE_CURRENT].reset();
+		mCurlMeshes[PAGE_LEFT] = new CurlMesh(10);
+		mCurlMeshes[PAGE_LEFT].setTexRect(new RectF(1, 0, 0, 1));
+		mCurlMeshes[PAGE_LEFT].reset();
+		mCurlMeshes[PAGE_RIGHT] = new CurlMesh(10);
+		mCurlMeshes[PAGE_RIGHT].setTexRect(new RectF(0, 0, 1, 1));
+		mCurlMeshes[PAGE_RIGHT].reset();
 	}
 
-	public void curl(PointF startPoint, PointF curlPoint) {
-		// Map position to 'render' coordinates.
-		PointF curlPos = new PointF();
-		curlPos.x = mViewRect.left
-				+ (mViewRect.width() * curlPoint.x / mViewportWidth);
-		curlPos.y = mViewRect.top
-				- (-mViewRect.height() * curlPoint.y / mViewportHeight);
-
-		// Map start point to 'render' coordinates.
-		PointF startPos = new PointF();
-		startPos.x = mViewRect.left
-				+ (mViewRect.width() * startPoint.x / mViewportWidth);
-		startPos.y = mViewRect.top
-				- (-mViewRect.height() * startPoint.y / mViewportHeight);
-
-		// Map startPos to view range.
-		startPos.x = startPos.x < mViewRect.left ? mViewRect.left : startPos.x;
-		startPos.x = startPos.x > mViewRect.right ? mViewRect.right
-				: startPos.x;
-		startPos.y = startPos.y < mViewRect.bottom ? mViewRect.bottom
-				: startPos.y;
-		startPos.y = startPos.y > mViewRect.top ? mViewRect.top : startPos.y;
-		if (Math.abs(startPos.x) < Math.abs(startPos.y)) {
-			startPos.y = startPos.y < 0 ? mViewRect.bottom : mViewRect.top;
-		} else {
-			startPos.x = startPos.x < 0 ? mViewRect.left : mViewRect.right;
-		}
-
-		PointF directionVec = new PointF(curlPos.x - startPos.x, curlPos.y
-				- startPos.y);
-
-		double radius = 0.3f;
+	/**
+	 * Calculates curl position from pointerPos, meaning that edge of mesh
+	 * follows pointerPos.
+	 */
+	public void setPointerPos(PointF pointerPos, PointF curlDir, double radius) {
 		double curlLen = radius * Math.PI;
-		double dist = Math.sqrt(directionVec.x * directionVec.x
-				+ directionVec.y * directionVec.y);
-
-		// Normalize direction vector.
-		directionVec.x = (float) (directionVec.x / dist);
-		directionVec.y = (float) (directionVec.y / dist);
+		double distX = mViewRect.right - pointerPos.x;
+		double distY = distX * curlDir.y;
+		double dist = Math.sqrt(distX * distX + distY * distY);
 
 		if (dist >= curlLen) {
 			double translate = (dist - curlLen) / 2;
-			curlPos.x -= directionVec.x * translate;
-			curlPos.y -= directionVec.y * translate;
+			pointerPos.x -= curlDir.x * translate;
+			pointerPos.y -= curlDir.y * translate;
 		} else {
 			double angle = Math.PI * Math.sqrt(dist / curlLen);
 			double translate = radius * Math.sin(angle);
-			curlPos.x += directionVec.x * translate;
-			curlPos.y += directionVec.y * translate;
+			pointerPos.x += curlDir.x * translate;
+			pointerPos.y += curlDir.y * translate;
 		}
+		setCurlPos(pointerPos, curlDir, radius);
+	}
 
-		mCurlMesh.curl(curlPos, directionVec, radius);
+	/**
+	 * Translates screen coordinates into view coordinates.
+	 */
+	public PointF getPos(float x, float y) {
+		PointF ret = new PointF();
+		ret.x = mViewRect.left + (mViewRect.width() * x / mViewportWidth);
+		ret.y = mViewRect.top - (-mViewRect.height() * y / mViewportHeight);
+		return ret;
+	}
+
+	/**
+	 * Sets curl position.
+	 */
+	public void setCurlPos(PointF curlPos, PointF curlDir, double radius) {
+		mCurlMeshes[PAGE_CURRENT].curl(curlPos, curlDir, radius);
 	}
 
 	@Override
@@ -102,19 +111,26 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 			loadBitmaps(gl);
 			mBitmapsChanged = false;
 		}
+		if (mBackgroundColorChanged) {
+			gl.glClearColorx(Color.red(mBackgroundColor),
+					Color.green(mBackgroundColor),
+					Color.blue(mBackgroundColor), 255);
+		}
 
 		gl.glClear(GL10.GL_COLOR_BUFFER_BIT); // | GL10.GL_DEPTH_BUFFER_BIT);
 		gl.glLoadIdentity();
 
-		if (mBitmaps[0] != null) {
-			// TODO: Draw left page.
+		if (mBitmaps[PAGE_LEFT] != null && mViewMode == SHOW_TWO_PAGES) {
+			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[PAGE_LEFT]);
+			mCurlMeshes[PAGE_LEFT].draw(gl);
 		}
-		if (mBitmaps[0] != null) {
-			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
-			mCurlMesh.draw(gl);
+		if (mBitmaps[PAGE_RIGHT] != null) {
+			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[PAGE_RIGHT]);
+			mCurlMeshes[PAGE_RIGHT].draw(gl);
 		}
-		if (mBitmaps[0] != null) {
-			// TODO: Draw right page.
+		if (mBitmaps[PAGE_CURRENT] != null) {
+			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[PAGE_CURRENT]);
+			mCurlMeshes[PAGE_CURRENT].draw(gl);
 		}
 	}
 
@@ -129,10 +145,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		mViewRect.bottom = -1.0f;
 		mViewRect.left = -ratio;
 		mViewRect.right = ratio;
-
-		mCurlRect.set(mViewRect);
-		// mCurlRect.inset(.2f, -.2f);
-		mCurlMesh.setRect(mCurlRect);
+		setViewMode(mViewMode);
 
 		gl.glMatrixMode(GL10.GL_PROJECTION);
 		gl.glLoadIdentity();
@@ -145,7 +158,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 
 	@Override
 	public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-		gl.glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+		setBackgroundColor(0xFF303030);
 		gl.glShadeModel(GL10.GL_SMOOTH);
 		gl.glHint(GL10.GL_PERSPECTIVE_CORRECTION_HINT, GL10.GL_NICEST);
 
@@ -166,11 +179,16 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	/**
 	 * Update bitmaps/textures.
 	 */
-	public void setBitmap(Bitmap bitmap) {
-		mBitmaps[0] = bitmap;
-		mBitmapsChanged = true;
+	public void setBitmap(Bitmap bitmap, int page) {
+		if (page >= 0 && page <= TEXTURE_COUNT) {
+			mBitmaps[page] = bitmap;
+			mBitmapsChanged = true;
+		}
 	}
 
+	/**
+	 * Updates textures from bitmaps.
+	 */
 	private void loadBitmaps(GL10 gl) {
 		for (int i = 0; i < TEXTURE_COUNT; ++i) {
 			if (mBitmaps[i] != null) {
@@ -178,5 +196,54 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 				GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, mBitmaps[i], 0);
 			}
 		}
+	}
+
+	/**
+	 * Change background/clear color.
+	 */
+	public void setBackgroundColor(int color) {
+		mBackgroundColor = color;
+		mBackgroundColorChanged = true;
+	}
+
+	/**
+	 * Sets visible page count to one or two.
+	 */
+	public void setViewMode(int viewmode) {
+		if (viewmode == SHOW_ONE_PAGE) {
+			mViewMode = viewmode;
+
+			RectF curlRect = new RectF(mViewRect);
+			mCurlMeshes[PAGE_CURRENT].setRect(curlRect);
+			mCurlMeshes[PAGE_CURRENT].reset();
+			mCurlMeshes[PAGE_RIGHT].setRect(curlRect);
+			mCurlMeshes[PAGE_RIGHT].reset();
+
+			mObserver.onBitmapSizeChanged(mViewportWidth, mViewportHeight);
+		} else if (viewmode == SHOW_TWO_PAGES) {
+			mViewMode = viewmode;
+
+			RectF curlRectLeft = new RectF(mViewRect);
+			curlRectLeft.right = 0;
+			RectF curlRectRight = new RectF(mViewRect);
+			curlRectRight.left = 0;
+
+			mCurlMeshes[PAGE_CURRENT].setRect(curlRectRight);
+			mCurlMeshes[PAGE_CURRENT].reset();
+			mCurlMeshes[PAGE_RIGHT].setRect(curlRectRight);
+			mCurlMeshes[PAGE_RIGHT].reset();
+			mCurlMeshes[PAGE_LEFT].setRect(curlRectLeft);
+			mCurlMeshes[PAGE_LEFT].reset();
+
+			mObserver.onBitmapSizeChanged((mViewportWidth + 1) / 2,
+					mViewportHeight);
+		}
+	}
+
+	/**
+	 * Observer for waiting render engine/state updates.
+	 */
+	public interface CurlRendererObserver {
+		public void onBitmapSizeChanged(int width, int height);
 	}
 }
