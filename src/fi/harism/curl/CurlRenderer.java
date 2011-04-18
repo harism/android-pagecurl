@@ -105,6 +105,8 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		for (int i = 0; i < mCurlMeshes.size(); ++i) {
 			mCurlMeshes.get(i).draw(gl);
 		}
+
+		mObserver.onRenderDone();
 	}
 
 	@Override
@@ -176,5 +178,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	 */
 	public interface CurlRendererObserver {
 		public void onBitmapSizeChanged(int width, int height);
+
+		public void onRenderDone();
 	}
 }
