@@ -21,7 +21,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 
 	public static final int SHOW_ONE_PAGE = 1;
 	public static final int SHOW_TWO_PAGES = 2;
-	
+
 	public static final int PAGE_LEFT = 1;
 	public static final int PAGE_RIGHT = 2;
 
@@ -39,7 +39,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	private int mBackgroundColor;
 
 	private CurlRendererObserver mObserver;
-	
+
 	private RectF mCurlRectLeft;
 	private RectF mCurlRectRight;
 
@@ -54,6 +54,26 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	}
 
 	/**
+	 * Adds CurlMesh to this renderer.
+	 */
+	public synchronized void addCurlMesh(CurlMesh mesh) {
+		removeCurlMesh(mesh);
+		mCurlMeshes.add(mesh);
+	}
+
+	/**
+	 * Returns rect reserved for left or right page.
+	 */
+	public RectF getPageRect(int page) {
+		if (page == PAGE_LEFT) {
+			return mCurlRectLeft;
+		} else if (page == PAGE_RIGHT) {
+			return mCurlRectRight;
+		}
+		return null;
+	}
+
+	/**
 	 * Translates screen coordinates into view coordinates.
 	 */
 	public PointF getPos(float x, float y) {
@@ -63,18 +83,26 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		return ret;
 	}
 
+	/**
+	 * Getter for current view mode.
+	 */
+	public int getViewMode() {
+		return mViewMode;
+	}
+
 	@Override
 	public synchronized void onDrawFrame(GL10 gl) {
 		if (mBackgroundColorChanged) {
 			gl.glClearColor(Color.red(mBackgroundColor) / 255f,
 					Color.green(mBackgroundColor) / 255f,
-					Color.blue(mBackgroundColor) / 255f, Color.alpha(mBackgroundColor) / 255f);
+					Color.blue(mBackgroundColor) / 255f,
+					Color.alpha(mBackgroundColor) / 255f);
 		}
 
 		gl.glClear(GL10.GL_COLOR_BUFFER_BIT); // | GL10.GL_DEPTH_BUFFER_BIT);
 		gl.glLoadIdentity();
-		
-		for (int i=0; i<mCurlMeshes.size(); ++i) {
+
+		for (int i = 0; i < mCurlMeshes.size(); ++i) {
 			mCurlMeshes.get(i).draw(gl);
 		}
 	}
@@ -109,18 +137,19 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	}
 
 	/**
+	 * Removes CurlMesh from this renderer.
+	 */
+	public synchronized void removeCurlMesh(CurlMesh mesh) {
+		while (mCurlMeshes.remove(mesh))
+			;
+	}
+
+	/**
 	 * Change background/clear color.
 	 */
 	public void setBackgroundColor(int color) {
 		mBackgroundColor = color;
 		mBackgroundColorChanged = true;
-	}
-	
-	/**
-	 * Getter for current view mode.
-	 */
-	public int getViewMode() {
-		return mViewMode;
 	}
 
 	/**
@@ -140,33 +169,6 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 			mObserver.onBitmapSizeChanged((mViewportWidth + 1) / 2,
 					mViewportHeight);
 		}
-	}
-	
-	/**
-	 * Returns rect reserved for left or right page.
-	 */
-	public RectF getPageRect(int page) {
-		if (page == PAGE_LEFT) {
-			return mCurlRectLeft;
-		} else if (page == PAGE_RIGHT) {
-			return mCurlRectRight;
-		}
-		return null;
-	}
-	
-	/**
-	 * Adds CurlMesh to this renderer.
-	 */
-	public synchronized void addCurlMesh(CurlMesh mesh) {
-		removeCurlMesh(mesh);
-		mCurlMeshes.add(mesh);
-	}
-	
-	/**
-	 * Removes CurlMesh from this renderer.
-	 */
-	public synchronized void removeCurlMesh(CurlMesh mesh) {
-		while (mCurlMeshes.remove(mesh));
 	}
 
 	/**

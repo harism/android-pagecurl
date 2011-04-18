@@ -63,6 +63,14 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	}
 
 	@Override
+	public void onBitmapSizeChanged(int width, int height) {
+		mBitmapWidth = width;
+		mBitmapHeight = height;
+		updateBitmaps();
+		requestRender();
+	}
+
+	@Override
 	public void onSizeChanged(int w, int h, int ow, int oh) {
 		super.onSizeChanged(w, h, ow, oh);
 
@@ -73,40 +81,6 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		// mRenderer.setViewMode(CurlRenderer.SHOW_TWO_PAGES);
 		// }
 
-		requestRender();
-	}
-
-	/**
-	 * Initialize method.
-	 */
-	private void init(Context ctx) {
-		mRenderer = new CurlRenderer(this);
-		setRenderer(mRenderer);
-		setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-		setOnTouchListener(this);
-
-		mCurlMeshes = new CurlMesh[3];
-		for (int i = 0; i < mCurlMeshes.length; ++i) {
-			mCurlMeshes[i] = new CurlMesh(10);
-			mCurlMeshes[i].setTexRect(new RectF(0, 0, 1, 1));
-		}
-	}
-
-	/**
-	 * Update/set bitmap provider.
-	 */
-	public void setBitmapProvider(CurlBitmapProvider bitmapProvider) {
-		mBitmapProvider = bitmapProvider;
-		mCurrentIndex = 0;
-		updateBitmaps();
-		requestRender();
-	}
-
-	@Override
-	public void onBitmapSizeChanged(int width, int height) {
-		mBitmapWidth = width;
-		mBitmapHeight = height;
-		updateBitmaps();
 		requestRender();
 	}
 
@@ -247,35 +221,36 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	}
 
 	/**
-	 * Updates bitmaps for left and right meshes.
+	 * Update/set bitmap provider.
 	 */
-	private void updateBitmaps() {
-		if (mBitmapProvider == null || mBitmapWidth <= 0 || mBitmapHeight <= 0) {
-			return;
-		}
+	public void setBitmapProvider(CurlBitmapProvider bitmapProvider) {
+		mBitmapProvider = bitmapProvider;
+		mCurrentIndex = 0;
+		updateBitmaps();
+		requestRender();
+	}
 
+	/**
+	 * Initialize method.
+	 */
+	private void init(Context ctx) {
+		mRenderer = new CurlRenderer(this);
+		setRenderer(mRenderer);
+		setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+		setOnTouchListener(this);
+
+		mCurlMeshes = new CurlMesh[3];
 		for (int i = 0; i < mCurlMeshes.length; ++i) {
-			mRenderer.removeCurlMesh(mCurlMeshes[i]);
+			mCurlMeshes[i] = new CurlMesh(10);
+			mCurlMeshes[i].setTexRect(new RectF(0, 0, 1, 1));
 		}
+	}
 
-		if (mCurrentIndex >= 0 && mCurrentIndex < mBitmapProvider.getBitmapCount()) {
-			Bitmap bitmap = mBitmapProvider.getBitmap(mBitmapWidth,
-					mBitmapHeight, mCurrentIndex);
-			mCurlMeshes[PAGE_RIGHT].setBitmap(bitmap);
-			mCurlMeshes[PAGE_RIGHT].setRect(mRenderer
-					.getPageRect(CurlRenderer.PAGE_RIGHT));
-			mCurlMeshes[PAGE_RIGHT].reset();
-			mRenderer.addCurlMesh(mCurlMeshes[PAGE_RIGHT]);
-		}
-		if (mCurrentIndex > 0) {
-			Bitmap bitmap = mBitmapProvider.getBitmap(mBitmapWidth,
-					mBitmapHeight, mCurrentIndex - 1);
-			mCurlMeshes[PAGE_LEFT].setBitmap(bitmap);
-			mCurlMeshes[PAGE_LEFT].setRect(mRenderer
-					.getPageRect(CurlRenderer.PAGE_LEFT));
-			mCurlMeshes[PAGE_LEFT].reset();
-			mRenderer.addCurlMesh(mCurlMeshes[PAGE_LEFT]);
-		}
+	/**
+	 * Sets curl position.
+	 */
+	private void setCurlPos(PointF curlPos, PointF curlDir, double radius) {
+		mCurlMeshes[PAGE_CURRENT].curl(curlPos, curlDir, radius);
 	}
 
 	/**
@@ -299,10 +274,36 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	}
 
 	/**
-	 * Sets curl position.
+	 * Updates bitmaps for left and right meshes.
 	 */
-	private void setCurlPos(PointF curlPos, PointF curlDir, double radius) {
-		mCurlMeshes[PAGE_CURRENT].curl(curlPos, curlDir, radius);
+	private void updateBitmaps() {
+		if (mBitmapProvider == null || mBitmapWidth <= 0 || mBitmapHeight <= 0) {
+			return;
+		}
+
+		for (int i = 0; i < mCurlMeshes.length; ++i) {
+			mRenderer.removeCurlMesh(mCurlMeshes[i]);
+		}
+
+		if (mCurrentIndex >= 0
+				&& mCurrentIndex < mBitmapProvider.getBitmapCount()) {
+			Bitmap bitmap = mBitmapProvider.getBitmap(mBitmapWidth,
+					mBitmapHeight, mCurrentIndex);
+			mCurlMeshes[PAGE_RIGHT].setBitmap(bitmap);
+			mCurlMeshes[PAGE_RIGHT].setRect(mRenderer
+					.getPageRect(CurlRenderer.PAGE_RIGHT));
+			mCurlMeshes[PAGE_RIGHT].reset();
+			mRenderer.addCurlMesh(mCurlMeshes[PAGE_RIGHT]);
+		}
+		if (mCurrentIndex > 0) {
+			Bitmap bitmap = mBitmapProvider.getBitmap(mBitmapWidth,
+					mBitmapHeight, mCurrentIndex - 1);
+			mCurlMeshes[PAGE_LEFT].setBitmap(bitmap);
+			mCurlMeshes[PAGE_LEFT].setRect(mRenderer
+					.getPageRect(CurlRenderer.PAGE_LEFT));
+			mCurlMeshes[PAGE_LEFT].reset();
+			mRenderer.addCurlMesh(mCurlMeshes[PAGE_LEFT]);
+		}
 	}
 
 }

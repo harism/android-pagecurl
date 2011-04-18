@@ -46,7 +46,7 @@ public class CurlMesh {
 	private int mMaxCurlSplits;
 
 	private Vertex[] mRectangle = new Vertex[4];
-	
+
 	private int[] mTextureIds;
 	private Bitmap mBitmap;
 
@@ -63,7 +63,7 @@ public class CurlMesh {
 	public CurlMesh(int maxCurlSplits) {
 		mMaxCurlSplits = maxCurlSplits;
 
-		for (int i=0; i<4; ++i) {
+		for (int i = 0; i < 4; ++i) {
 			mRectangle[i] = new Vertex();
 		}
 
@@ -106,13 +106,6 @@ public class CurlMesh {
 		mShadowVertices.position(0);
 
 		mDropShadowCount = mSelfShadowCount = 0;
-	}
-	
-	/**
-	 * Sets new texture for this mesh.
-	 */
-	public void setBitmap(Bitmap bitmap) {
-		mBitmap = bitmap;
 	}
 
 	/**
@@ -351,9 +344,9 @@ public class CurlMesh {
 			GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, mBitmap, 0);
 			mBitmap = null;
 		}
-		
+
 		gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
-		
+
 		// Some 'global' settings.
 		gl.glEnable(GL10.GL_BLEND);
 		gl.glEnableClientState(GL10.GL_VERTEX_ARRAY);
@@ -366,7 +359,7 @@ public class CurlMesh {
 		// Enable color array.
 		gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
 		gl.glColorPointer(4, GL10.GL_FLOAT, 0, mColors);
-		
+
 		// Draw blank / 'white' front facing vertices.
 		gl.glBlendFunc(GL10.GL_ONE, GL10.GL_ZERO);
 		gl.glDisable(GL10.GL_TEXTURE_2D);
@@ -440,6 +433,13 @@ public class CurlMesh {
 	}
 
 	/**
+	 * Sets new texture for this mesh.
+	 */
+	public void setBitmap(Bitmap bitmap) {
+		mBitmap = bitmap;
+	}
+
+	/**
 	 * Update mesh bounds.
 	 */
 	public synchronized void setRect(RectF r) {
@@ -452,7 +452,7 @@ public class CurlMesh {
 		mRectangle[3].mPosX = r.right;
 		mRectangle[3].mPosY = r.bottom;
 	}
-	
+
 	/**
 	 * Update texture bounds.
 	 */
