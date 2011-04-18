@@ -3,21 +3,41 @@ package fi.harism.curl;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.PointF;
+import android.graphics.RectF;
 import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 
 /**
- * EGL View.
+ * OpenGL ES View.
+ * 
+ * TODO: Clean up code - a lot.
  * 
  * @author harism
  */
-public class CurlView extends GLSurfaceView {
+public class CurlView extends GLSurfaceView implements View.OnTouchListener,
+		CurlRenderer.CurlRendererObserver {
 
-	// Actual renderer.
-	private CurlRenderer mCurlRenderer;
-	private BitmapHandler mBitmapHandler;
+	public static final int PAGE_CURRENT = 0;
+	public static final int PAGE_LEFT = 1;
+	public static final int PAGE_RIGHT = 2;
+
+	private static final int CURL_NONE = 0;
+	private static final int CURL_LEFT = 1;
+	private static final int CURL_RIGHT = 2;
+	private int mCurlState = CURL_NONE;
+
+	private int mCurrentIndex = 0;
+	private int mBitmapWidth = -1;
+	private int mBitmapHeight = -1;
+
+	private PointF mStartPos = new PointF();
+
+	private CurlRenderer mRenderer;
+	private CurlBitmapProvider mBitmapProvider;
+
+	private CurlMesh mCurlMeshes[];
 
 	/**
 	 * Default constructor.
@@ -46,11 +66,12 @@ public class CurlView extends GLSurfaceView {
 	public void onSizeChanged(int w, int h, int ow, int oh) {
 		super.onSizeChanged(w, h, ow, oh);
 
-		if (h > w) {
-			mCurlRenderer.setViewMode(CurlRenderer.SHOW_ONE_PAGE);
-		} else {
-			mCurlRenderer.setViewMode(CurlRenderer.SHOW_TWO_PAGES);
-		}
+		// TODO: This requires some changes in CurlMesh etc.
+		// if (h > w) {
+		// mRenderer.setViewMode(CurlRenderer.SHOW_ONE_PAGE);
+		// } else {
+		// mRenderer.setViewMode(CurlRenderer.SHOW_TWO_PAGES);
+		// }
 
 		requestRender();
 	}
@@ -59,161 +80,229 @@ public class CurlView extends GLSurfaceView {
 	 * Initialize method.
 	 */
 	private void init(Context ctx) {
-		mBitmapHandler = new BitmapHandler();
-		mCurlRenderer = new CurlRenderer(mBitmapHandler);
-		setRenderer(mCurlRenderer);
+		mRenderer = new CurlRenderer(this);
+		setRenderer(mRenderer);
 		setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-		this.setOnTouchListener(new TouchListener());
+		setOnTouchListener(this);
+
+		mCurlMeshes = new CurlMesh[3];
+		for (int i = 0; i < mCurlMeshes.length; ++i) {
+			mCurlMeshes[i] = new CurlMesh(10);
+			mCurlMeshes[i].setTexRect(new RectF(0, 0, 1, 1));
+		}
 	}
 
 	/**
 	 * Update/set bitmap provider.
 	 */
-	public void setBitmapProvider(CurlBitmapProvider curlBitmapProvider) {
-		mBitmapHandler.setBitmapProvider(curlBitmapProvider);
+	public void setBitmapProvider(CurlBitmapProvider bitmapProvider) {
+		mBitmapProvider = bitmapProvider;
+		mCurrentIndex = 0;
+		updateBitmaps();
+		requestRender();
+	}
+
+	@Override
+	public void onBitmapSizeChanged(int width, int height) {
+		mBitmapWidth = width;
+		mBitmapHeight = height;
+		updateBitmaps();
+		requestRender();
+	}
+
+	@Override
+	public boolean onTouch(View view, MotionEvent me) {
+		if (me.getAction() == MotionEvent.ACTION_DOWN) {
+			float x = me.getX();
+			float y = me.getY();
+			if (x > view.getWidth() / 2) {
+				x = view.getWidth();
+				if (mCurrentIndex < mBitmapProvider.getBitmapCount()) {
+					for (int i = 0; i < mCurlMeshes.length; ++i) {
+						mRenderer.removeCurlMesh(mCurlMeshes[i]);
+					}
+					CurlMesh curl = mCurlMeshes[PAGE_RIGHT];
+					mCurlMeshes[PAGE_RIGHT] = mCurlMeshes[PAGE_CURRENT];
+					mCurlMeshes[PAGE_CURRENT] = curl;
+					if (mCurrentIndex > 0) {
+						mCurlMeshes[PAGE_LEFT].setRect(mRenderer
+								.getPageRect(CurlRenderer.PAGE_LEFT));
+						mCurlMeshes[PAGE_LEFT].reset();
+						mRenderer.addCurlMesh(mCurlMeshes[PAGE_LEFT]);
+					}
+					if (mCurrentIndex < mBitmapProvider.getBitmapCount() - 1) {
+						Bitmap bitmap = mBitmapProvider.getBitmap(mBitmapWidth,
+								mBitmapHeight, mCurrentIndex + 1);
+						mCurlMeshes[PAGE_RIGHT].setBitmap(bitmap);
+						mCurlMeshes[PAGE_RIGHT].setRect(mRenderer
+								.getPageRect(CurlRenderer.PAGE_RIGHT));
+						mCurlMeshes[PAGE_RIGHT].reset();
+						mRenderer.addCurlMesh(mCurlMeshes[PAGE_RIGHT]);
+					}
+					mCurlMeshes[PAGE_CURRENT].setRect(mRenderer
+							.getPageRect(CurlRenderer.PAGE_RIGHT));
+					mCurlMeshes[PAGE_CURRENT].reset();
+					mRenderer.addCurlMesh(mCurlMeshes[PAGE_CURRENT]);
+					mCurlState = CURL_RIGHT;
+				}
+			} else {
+				x = 0;
+				if (mCurrentIndex > 0) {
+					for (int i = 0; i < mCurlMeshes.length; ++i) {
+						mRenderer.removeCurlMesh(mCurlMeshes[i]);
+					}
+					CurlMesh curl = mCurlMeshes[PAGE_LEFT];
+					mCurlMeshes[PAGE_LEFT] = mCurlMeshes[PAGE_CURRENT];
+					mCurlMeshes[PAGE_CURRENT] = curl;
+					if (mCurrentIndex > 1) {
+						Bitmap bitmap = mBitmapProvider.getBitmap(mBitmapWidth,
+								mBitmapHeight, mCurrentIndex - 2);
+						mCurlMeshes[PAGE_LEFT].setBitmap(bitmap);
+						mCurlMeshes[PAGE_LEFT].setRect(mRenderer
+								.getPageRect(CurlRenderer.PAGE_LEFT));
+						mCurlMeshes[PAGE_LEFT].reset();
+						mRenderer.addCurlMesh(mCurlMeshes[PAGE_LEFT]);
+					}
+					if (mCurrentIndex < mBitmapProvider.getBitmapCount()) {
+						mCurlMeshes[PAGE_RIGHT].setRect(mRenderer
+								.getPageRect(CurlRenderer.PAGE_RIGHT));
+						mCurlMeshes[PAGE_RIGHT].reset();
+						mRenderer.addCurlMesh(mCurlMeshes[PAGE_RIGHT]);
+					}
+					mCurlMeshes[PAGE_CURRENT].setRect(mRenderer
+							.getPageRect(CurlRenderer.PAGE_RIGHT));
+					mCurlMeshes[PAGE_CURRENT].reset();
+					mRenderer.addCurlMesh(mCurlMeshes[PAGE_CURRENT]);
+					mCurlState = CURL_LEFT;
+				}
+			}
+			mStartPos = mRenderer.getPos(x, y);
+		} else if (me.getAction() == MotionEvent.ACTION_MOVE) {
+			switch (mCurlState) {
+			case CURL_RIGHT: {
+				PointF curPos = mRenderer.getPos(me.getX(), me.getY());
+
+				PointF dirVec = new PointF();
+				dirVec.x = curPos.x - mStartPos.x;
+				dirVec.y = curPos.y - mStartPos.y;
+				float dist = (float) Math.sqrt(dirVec.x * dirVec.x + dirVec.y
+						* dirVec.y);
+				dirVec.x /= dist;
+				dirVec.y /= dist;
+
+				setCurlPos(curPos, dirVec, 0.3f, dist);
+				requestRender();
+				break;
+			}
+			case CURL_LEFT: {
+				PointF curPos = mRenderer.getPos(me.getX(), me.getY());
+				curPos.x -= 0.3f;
+
+				PointF dirVec = new PointF();
+				dirVec.x = curPos.x + mStartPos.x;
+				dirVec.y = curPos.y - mStartPos.y;
+				float dist = (float) Math.sqrt(dirVec.x * dirVec.x + dirVec.y
+						* dirVec.y);
+				dirVec.x /= dist;
+				dirVec.y /= dist;
+
+				setCurlPos(curPos, dirVec, 0.3f);
+				requestRender();
+				break;
+			}
+			}
+		} else if (me.getAction() == MotionEvent.ACTION_CANCEL
+				|| me.getAction() == MotionEvent.ACTION_UP) {
+			// TODO: Animate...
+			if (mCurlState == CURL_LEFT || mCurlState == CURL_RIGHT) {
+				if (me.getX() > getWidth() / 2) {
+					CurlMesh right = mCurlMeshes[PAGE_CURRENT];
+					CurlMesh current = mCurlMeshes[PAGE_RIGHT];
+					right.setRect(mRenderer
+							.getPageRect(CurlRenderer.PAGE_RIGHT));
+					right.reset();
+					mRenderer.removeCurlMesh(current);
+					mCurlMeshes[PAGE_CURRENT] = current;
+					mCurlMeshes[PAGE_RIGHT] = right;
+					if (mCurlState == CURL_LEFT) {
+						mCurrentIndex--;
+					}
+				} else {
+					CurlMesh left = mCurlMeshes[PAGE_CURRENT];
+					CurlMesh current = mCurlMeshes[PAGE_LEFT];
+					left.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
+					left.reset();
+					mRenderer.removeCurlMesh(current);
+					mCurlMeshes[PAGE_CURRENT] = current;
+					mCurlMeshes[PAGE_LEFT] = left;
+					if (mCurlState == CURL_RIGHT) {
+						mCurrentIndex++;
+					}
+				}
+				mCurlState = CURL_NONE;
+				requestRender();
+			}
+		}
+		return true;
 	}
 
 	/**
-	 * Touch listener.
+	 * Updates bitmaps for left and right meshes.
 	 */
-	private class TouchListener implements View.OnTouchListener {
+	private void updateBitmaps() {
+		if (mBitmapProvider == null || mBitmapWidth <= 0 || mBitmapHeight <= 0) {
+			return;
+		}
 
-		private static final int DRAG_NONE = 0;
-		private static final int DRAG_LEFT = 1;
-		private static final int DRAG_RIGHT = 2;
+		for (int i = 0; i < mCurlMeshes.length; ++i) {
+			mRenderer.removeCurlMesh(mCurlMeshes[i]);
+		}
 
-		// ACTION_DOWN coordinates.
-		private PointF mStartPos = new PointF();
-		private int mDragMode = DRAG_NONE;
-
-		@Override
-		public boolean onTouch(View v, MotionEvent me) {
-			if (me.getAction() == MotionEvent.ACTION_DOWN) {
-				float x = me.getX();
-				float y = me.getY();
-				if (x > getWidth() / 2) {
-					x = getWidth();
-					if (mBitmapHandler.updateBitmaps(BitmapHandler.CURL_RIGHT)) {
-						mDragMode = DRAG_RIGHT;
-					}
-				} else {
-					x = 0;
-					if (mBitmapHandler.updateBitmaps(BitmapHandler.CURL_LEFT)) {
-						mDragMode = DRAG_LEFT;
-					}
-				}
-				mStartPos = mCurlRenderer.getPos(x, y);
-			} else if (me.getAction() == MotionEvent.ACTION_MOVE) {
-				switch (mDragMode) {
-				case DRAG_RIGHT: {
-					PointF curPos = mCurlRenderer.getPos(me.getX(), me.getY());
-
-					PointF dirVec = new PointF();
-					dirVec.x = curPos.x - mStartPos.x;
-					dirVec.y = curPos.y - mStartPos.y;
-					float dist = (float) Math.sqrt(dirVec.x * dirVec.x
-							+ dirVec.y * dirVec.y);
-					dirVec.x /= dist;
-					dirVec.y /= dist;
-
-					mCurlRenderer.setPointerPos(curPos, dirVec, 0.3f);
-					requestRender();
-					break;
-				}
-				case DRAG_LEFT: {
-					PointF curPos = mCurlRenderer.getPos(me.getX(), me.getY());
-					curPos.x -= 0.3f;
-
-					PointF dirVec = new PointF();
-					dirVec.x = curPos.x + mStartPos.x;
-					dirVec.y = curPos.y - mStartPos.y;
-					float dist = (float) Math.sqrt(dirVec.x * dirVec.x
-							+ dirVec.y * dirVec.y);
-					dirVec.x /= dist;
-					dirVec.y /= dist;
-
-					mCurlRenderer.setCurlPos(curPos, dirVec, 0.3f);
-					requestRender();
-					break;
-				}
-			}
-			}
-			else if (me.getAction() == MotionEvent.ACTION_CANCEL || me.getAction() == MotionEvent.ACTION_UP) {
-				mDragMode = DRAG_NONE;
-				// TODO: Animate...
-			}
-			return true;
+		if (mCurrentIndex >= 0 && mCurrentIndex < mBitmapProvider.getBitmapCount()) {
+			Bitmap bitmap = mBitmapProvider.getBitmap(mBitmapWidth,
+					mBitmapHeight, mCurrentIndex);
+			mCurlMeshes[PAGE_RIGHT].setBitmap(bitmap);
+			mCurlMeshes[PAGE_RIGHT].setRect(mRenderer
+					.getPageRect(CurlRenderer.PAGE_RIGHT));
+			mCurlMeshes[PAGE_RIGHT].reset();
+			mRenderer.addCurlMesh(mCurlMeshes[PAGE_RIGHT]);
+		}
+		if (mCurrentIndex > 0) {
+			Bitmap bitmap = mBitmapProvider.getBitmap(mBitmapWidth,
+					mBitmapHeight, mCurrentIndex - 1);
+			mCurlMeshes[PAGE_LEFT].setBitmap(bitmap);
+			mCurlMeshes[PAGE_LEFT].setRect(mRenderer
+					.getPageRect(CurlRenderer.PAGE_LEFT));
+			mCurlMeshes[PAGE_LEFT].reset();
+			mRenderer.addCurlMesh(mCurlMeshes[PAGE_LEFT]);
 		}
 	}
 
-	private class BitmapHandler implements CurlRenderer.CurlRendererObserver {
-
-		public static final int CURL_NONE = 0;
-		public static final int CURL_LEFT = 1;
-		public static final int CURL_RIGHT = 2;
-
-		private int mCurrentIndex = 0;
-		private int mBitmapWidth = -1;
-		private int mBitmapHeight = -1;
-		private CurlBitmapProvider mCurlBitmapProvider;
-
-		@Override
-		public void onBitmapSizeChanged(int width, int height) {
-			mBitmapWidth = width;
-			mBitmapHeight = height;
-			updateBitmaps(CURL_NONE);
+	/**
+	 * Calculates curl position from pointerPos and dist, meaning that edge of
+	 * mesh follows pointerPos.
+	 */
+	private void setCurlPos(PointF pointerPos, PointF curlDir, double radius,
+			double dist) {
+		double curlLen = radius * Math.PI;
+		if (dist >= curlLen) {
+			double translate = (dist - curlLen) / 2;
+			pointerPos.x -= curlDir.x * translate;
+			pointerPos.y -= curlDir.y * translate;
+		} else {
+			double angle = Math.PI * Math.sqrt(dist / curlLen);
+			double translate = radius * Math.sin(angle);
+			pointerPos.x += curlDir.x * translate;
+			pointerPos.y += curlDir.y * translate;
 		}
+		setCurlPos(pointerPos, curlDir, radius);
+	}
 
-		public void setBitmapProvider(CurlBitmapProvider provider) {
-			mCurlBitmapProvider = provider;
-			mCurrentIndex = 1;
-			updateBitmaps(CURL_NONE);
-		}
-
-		private boolean updateBitmaps(int curlMode) {
-			if (mBitmapWidth <= 0 || mBitmapHeight <= 0) {
-				return false;
-			}
-
-			int leftIdx = mCurrentIndex - 1;
-			int rightIdx = mCurrentIndex;
-			int curlIdx = -1;
-			if (curlMode == CURL_RIGHT) {
-				curlIdx = mCurrentIndex;
-				rightIdx = mCurrentIndex + 1;
-			} else if (curlMode == CURL_LEFT) {
-				leftIdx = mCurrentIndex - 2;
-				curlIdx = mCurrentIndex - 1;
-			}
-
-			int max = mCurlBitmapProvider.getBitmapCount();
-			if (leftIdx >= 0 && leftIdx < max) {
-				Bitmap bitmap = mCurlBitmapProvider.getBitmap(mBitmapWidth,
-						mBitmapHeight, leftIdx);
-				mCurlRenderer.setBitmap(bitmap, CurlRenderer.PAGE_LEFT);
-			} else {
-				mCurlRenderer.setBitmap(null, CurlRenderer.PAGE_LEFT);
-			}
-			if (rightIdx >= 0 && rightIdx < max) {
-				Bitmap bitmap = mCurlBitmapProvider.getBitmap(mBitmapWidth,
-						mBitmapHeight, rightIdx);
-				mCurlRenderer.setBitmap(bitmap, CurlRenderer.PAGE_RIGHT);
-			} else {
-				mCurlRenderer.setBitmap(null, CurlRenderer.PAGE_RIGHT);
-			}
-			boolean ret = false;
-			if (curlIdx >= 0 && curlIdx < max) {
-				Bitmap bitmap = mCurlBitmapProvider.getBitmap(mBitmapWidth,
-						mBitmapHeight, curlIdx);
-				mCurlRenderer.setBitmap(bitmap, CurlRenderer.PAGE_CURRENT);
-				ret = true;
-			} else {
-				mCurlRenderer.setBitmap(null, CurlRenderer.PAGE_CURRENT);
-			}
-
-			requestRender();
-			return ret;
-		}
+	/**
+	 * Sets curl position.
+	 */
+	private void setCurlPos(PointF curlPos, PointF curlDir, double radius) {
+		mCurlMeshes[PAGE_CURRENT].curl(curlPos, curlDir, radius);
 	}
 
 }

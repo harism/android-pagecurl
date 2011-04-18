@@ -7,8 +7,10 @@ import java.util.Vector;
 
 import javax.microedition.khronos.opengles.GL10;
 
+import android.graphics.Bitmap;
 import android.graphics.PointF;
 import android.graphics.RectF;
+import android.opengl.GLUtils;
 
 /**
  * Class implementing actual curl.
@@ -44,6 +46,9 @@ public class CurlMesh {
 	private int mMaxCurlSplits;
 
 	private Vertex[] mRectangle = new Vertex[4];
+	
+	private int[] mTextureIds;
+	private Bitmap mBitmap;
 
 	/**
 	 * Constructor for mesh object.
@@ -101,6 +106,13 @@ public class CurlMesh {
 		mShadowVertices.position(0);
 
 		mDropShadowCount = mSelfShadowCount = 0;
+	}
+	
+	/**
+	 * Sets new texture for this mesh.
+	 */
+	public void setBitmap(Bitmap bitmap) {
+		mBitmap = bitmap;
 	}
 
 	/**
@@ -317,6 +329,31 @@ public class CurlMesh {
 	 * Draw our mesh.
 	 */
 	public synchronized void draw(GL10 gl) {
+		// First allocate texture if there is not one yet.
+		if (mTextureIds == null) {
+			// Generate texture.
+			mTextureIds = new int[1];
+			gl.glGenTextures(1, mTextureIds, 0);
+			// Set texture attributes.
+			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
+			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MIN_FILTER,
+					GL10.GL_LINEAR);
+			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MAG_FILTER,
+					GL10.GL_LINEAR);
+			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_S,
+					GL10.GL_CLAMP_TO_EDGE);
+			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_T,
+					GL10.GL_CLAMP_TO_EDGE);
+		}
+		// If mBitmap != null we have new texture.
+		if (mBitmap != null) {
+			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
+			GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, mBitmap, 0);
+			mBitmap = null;
+		}
+		
+		gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
+		
 		// Some 'global' settings.
 		gl.glEnable(GL10.GL_BLEND);
 		gl.glEnableClientState(GL10.GL_VERTEX_ARRAY);
