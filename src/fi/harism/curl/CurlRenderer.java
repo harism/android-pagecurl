@@ -38,7 +38,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	private boolean mBackgroundColorChanged = false;
 	private int mBackgroundColor;
 
-	private CurlRendererObserver mObserver;
+	private CurlRenderer.Observer mObserver;
 
 	private RectF mCurlRectLeft;
 	private RectF mCurlRectRight;
@@ -46,7 +46,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	/**
 	 * Basic constructor.
 	 */
-	public CurlRenderer(CurlRendererObserver observer) {
+	public CurlRenderer(CurlRenderer.Observer observer) {
 		mObserver = observer;
 		mCurlMeshes = new Vector<CurlMesh>();
 		mCurlRectLeft = new RectF();
@@ -163,6 +163,8 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		if (viewmode == SHOW_ONE_PAGE) {
 			mViewMode = viewmode;
 			mCurlRectRight.set(mViewRect);
+			mCurlRectLeft.set(mCurlRectRight);
+			mCurlRectLeft.offset(-mCurlRectRight.width(), 0);
 			mObserver.onBitmapSizeChanged(mViewportWidth, mViewportHeight);
 		} else if (viewmode == SHOW_TWO_PAGES) {
 			mViewMode = viewmode;
@@ -178,7 +180,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	/**
 	 * Observer for waiting render engine/state updates.
 	 */
-	public interface CurlRendererObserver {
+	public interface Observer {
 		public void onBitmapSizeChanged(int width, int height);
 
 		public void onRenderDone();

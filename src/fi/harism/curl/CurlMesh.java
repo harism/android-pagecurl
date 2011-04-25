@@ -26,6 +26,8 @@ public class CurlMesh {
 	private static final float[] SHADOW_OUTER_COLOR = { 0f, 0f, 0f, 0f };
 
 	private static final double BACKFACE_ALPHA = .4f;
+	private static final double FRONTFACE_ALPHA = 1f;
+	private boolean mSwapAlpha = false;
 
 	// For testing purposes.
 	private int mHelperLinesCount;
@@ -232,6 +234,9 @@ public class CurlMesh {
 				if (v.mPosX <= -curlLength) {
 					v.mPosX = -(curlLength + v.mPosX);
 					v.mPosZ = 2 * radius;
+
+					v.mAlpha = mSwapAlpha ? FRONTFACE_ALPHA : BACKFACE_ALPHA;
+					mVerticesCountBack++;
 				}
 				// Vertex lies within 'curl'.
 				else if (v.mPosX < 0) {
@@ -241,14 +246,19 @@ public class CurlMesh {
 					v.mPosX = radius * Math.cos(rotY);
 					v.mPosZ = radius + (radius * -Math.sin(rotY));
 					v.mColor = Math.sqrt(Math.cos(rotY) + 1);
-				}
 
-				// TODO: What if radius == 0?
-				if (v.mPosZ <= radius) {
-					mVerticesCountFront++;
+					if (v.mPosZ >= radius) {
+						v.mAlpha = mSwapAlpha ? FRONTFACE_ALPHA
+								: BACKFACE_ALPHA;
+						mVerticesCountBack++;
+					} else {
+						v.mAlpha = mSwapAlpha ? BACKFACE_ALPHA
+								: FRONTFACE_ALPHA;
+						mVerticesCountFront++;
+					}
 				} else {
-					mVerticesCountBack++;
-					v.mAlpha = BACKFACE_ALPHA;
+					v.mAlpha = mSwapAlpha ? BACKFACE_ALPHA : FRONTFACE_ALPHA;
+					mVerticesCountFront++;
 				}
 
 				// Rotate vertex back to 'world' coordinates.
@@ -465,6 +475,12 @@ public class CurlMesh {
 		mRectangle[2].mTexY = r.top;
 		mRectangle[3].mTexX = r.right;
 		mRectangle[3].mTexY = r.bottom;
+
+		mSwapAlpha = r.left > r.right;
+		for (int i = 0; i < 4; ++i) {
+			mRectangle[i].mAlpha = mSwapAlpha ? BACKFACE_ALPHA
+					: FRONTFACE_ALPHA;
+		}
 	}
 
 	/**

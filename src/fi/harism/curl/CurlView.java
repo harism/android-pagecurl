@@ -12,16 +12,16 @@ import android.view.View;
 /**
  * OpenGL ES View.
  * 
- * TODO: Clean up code - a lot.
- * 
  * @author harism
  */
 public class CurlView extends GLSurfaceView implements View.OnTouchListener,
-		CurlRenderer.CurlRendererObserver {
+		CurlRenderer.Observer {
 
-	public static final int PAGE_CURRENT = 0;
+	// Mesh indices.
+	public static final int PAGE_CURL = 0;
 	public static final int PAGE_LEFT = 1;
 	public static final int PAGE_RIGHT = 2;
+	private CurlMesh mCurlMeshes[];
 
 	private static final int CURL_NONE = 0;
 	private static final int CURL_LEFT = 1;
@@ -34,17 +34,15 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 
 	private PointF mStartPos = new PointF();
 
-	private CurlRenderer mRenderer;
-	private CurlBitmapProvider mBitmapProvider;
-
-	private CurlMesh mCurlMeshes[];
-
-	// TODO: This is a DISASTER  :)
 	private boolean mAnimate = false;
 	private PointF mAnimationSource;
 	private PointF mAnimationTarget;
 	private long mAnimationStartTime;
 	private long mAnimationDurationTime;
+	private int mAnimationTargetEvent;
+
+	private CurlRenderer mRenderer;
+	private CurlBitmapProvider mBitmapProvider;
 
 	/**
 	 * Default constructor.
@@ -84,32 +82,27 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		}
 
 		long currentTime = System.currentTimeMillis();
-		PointF pos = new PointF();
-		pos.set(mAnimationSource);
-		pos.x += (mAnimationTarget.x - mAnimationSource.x)
-				* (currentTime - mAnimationStartTime) / mAnimationDurationTime;
-		pos.y += (mAnimationTarget.y - mAnimationSource.y)
-				* (currentTime - mAnimationStartTime) / mAnimationDurationTime;
-
 		if (currentTime >= mAnimationStartTime + mAnimationDurationTime) {
-			if (pos.x > mRenderer.getPos(getWidth() / 2, 0).x) {
-				CurlMesh right = mCurlMeshes[PAGE_CURRENT];
+			if (mAnimationTargetEvent == PAGE_RIGHT) {
+				CurlMesh right = mCurlMeshes[PAGE_CURL];
 				CurlMesh current = mCurlMeshes[PAGE_RIGHT];
 				right.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT));
+				right.setTexRect(new RectF(0, 0, 1, 1));
 				right.reset();
 				mRenderer.removeCurlMesh(current);
-				mCurlMeshes[PAGE_CURRENT] = current;
+				mCurlMeshes[PAGE_CURL] = current;
 				mCurlMeshes[PAGE_RIGHT] = right;
 				if (mCurlState == CURL_LEFT) {
 					mCurrentIndex--;
 				}
-			} else {
-				CurlMesh left = mCurlMeshes[PAGE_CURRENT];
+			} else if (mAnimationTargetEvent == PAGE_LEFT) {
+				CurlMesh left = mCurlMeshes[PAGE_CURL];
 				CurlMesh current = mCurlMeshes[PAGE_LEFT];
 				left.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
+				left.setTexRect(new RectF(1, 0, 0, 1));
 				left.reset();
 				mRenderer.removeCurlMesh(current);
-				mCurlMeshes[PAGE_CURRENT] = current;
+				mCurlMeshes[PAGE_CURL] = current;
 				mCurlMeshes[PAGE_LEFT] = left;
 				if (mCurlState == CURL_RIGHT) {
 					mCurrentIndex++;
@@ -118,36 +111,16 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			mCurlState = CURL_NONE;
 			mAnimate = false;
 			requestRender();
-			return;
-		}
-
-		switch (mCurlState) {
-		case CURL_RIGHT: {
-			PointF dirVec = new PointF();
-			dirVec.x = pos.x - mStartPos.x;
-			dirVec.y = pos.y - mStartPos.y;
-			float dist = (float) Math.sqrt(dirVec.x * dirVec.x + dirVec.y
-					* dirVec.y);
-			dirVec.x /= dist;
-			dirVec.y /= dist;
-
-			setCurlPos(pos, dirVec, 0.3f, dist);
-			requestRender();
-			break;
-		}
-		case CURL_LEFT: {
-			PointF dirVec = new PointF();
-			dirVec.x = pos.x + mStartPos.x;
-			dirVec.y = pos.y - mStartPos.y;
-			float dist = (float) Math.sqrt(dirVec.x * dirVec.x + dirVec.y
-					* dirVec.y);
-			dirVec.x /= dist;
-			dirVec.y /= dist;
-
-			setCurlPos(pos, dirVec, 0.3f);
-			requestRender();
-			break;
-		}
+		} else {
+			PointF pos = new PointF();
+			pos.set(mAnimationSource);
+			pos.x += (mAnimationTarget.x - mAnimationSource.x)
+					* (currentTime - mAnimationStartTime)
+					/ mAnimationDurationTime;
+			pos.y += (mAnimationTarget.y - mAnimationSource.y)
+					* (currentTime - mAnimationStartTime)
+					/ mAnimationDurationTime;
+			updateCurl(pos);
 		}
 	}
 
@@ -155,122 +128,45 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	public void onSizeChanged(int w, int h, int ow, int oh) {
 		super.onSizeChanged(w, h, ow, oh);
 
-		// TODO: This requires some changes in CurlMesh etc.
-		// if (h > w) {
-		// mRenderer.setViewMode(CurlRenderer.SHOW_ONE_PAGE);
-		// } else {
-		// mRenderer.setViewMode(CurlRenderer.SHOW_TWO_PAGES);
-		// }
+		if (h > w) {
+			//mRenderer.setViewMode(CurlRenderer.SHOW_ONE_PAGE);
+		} else {
+			//mRenderer.setViewMode(CurlRenderer.SHOW_TWO_PAGES);
+		}
 
 		requestRender();
 	}
 
 	@Override
 	public boolean onTouch(View view, MotionEvent me) {
+		// No dragging during animation at the moment.
+		// TODO: Stop animation on touch event and return to drag mode.
 		if (mAnimate) {
 			return false;
 		}
-		if (me.getAction() == MotionEvent.ACTION_DOWN) {
+
+		switch (me.getAction()) {
+		case MotionEvent.ACTION_DOWN: {
 			float x = me.getX();
-			float y = me.getY();
-			if (x > view.getWidth() / 2) {
-				x = view.getWidth();
+			if (x > getWidth() / 2) {
 				if (mCurrentIndex < mBitmapProvider.getBitmapCount()) {
-					for (int i = 0; i < mCurlMeshes.length; ++i) {
-						mRenderer.removeCurlMesh(mCurlMeshes[i]);
-					}
-					CurlMesh curl = mCurlMeshes[PAGE_RIGHT];
-					mCurlMeshes[PAGE_RIGHT] = mCurlMeshes[PAGE_CURRENT];
-					mCurlMeshes[PAGE_CURRENT] = curl;
-					if (mCurrentIndex > 0) {
-						mCurlMeshes[PAGE_LEFT].setRect(mRenderer
-								.getPageRect(CurlRenderer.PAGE_LEFT));
-						mCurlMeshes[PAGE_LEFT].reset();
-						mRenderer.addCurlMesh(mCurlMeshes[PAGE_LEFT]);
-					}
-					if (mCurrentIndex < mBitmapProvider.getBitmapCount() - 1) {
-						Bitmap bitmap = mBitmapProvider.getBitmap(mBitmapWidth,
-								mBitmapHeight, mCurrentIndex + 1);
-						mCurlMeshes[PAGE_RIGHT].setBitmap(bitmap);
-						mCurlMeshes[PAGE_RIGHT].setRect(mRenderer
-								.getPageRect(CurlRenderer.PAGE_RIGHT));
-						mCurlMeshes[PAGE_RIGHT].reset();
-						mRenderer.addCurlMesh(mCurlMeshes[PAGE_RIGHT]);
-					}
-					mCurlMeshes[PAGE_CURRENT].setRect(mRenderer
-							.getPageRect(CurlRenderer.PAGE_RIGHT));
-					mCurlMeshes[PAGE_CURRENT].reset();
-					mRenderer.addCurlMesh(mCurlMeshes[PAGE_CURRENT]);
-					mCurlState = CURL_RIGHT;
+					mStartPos = mRenderer.getPos(getWidth(), me.getY());
+					startCurl(CURL_RIGHT);
 				}
 			} else {
-				x = 0;
 				if (mCurrentIndex > 0) {
-					for (int i = 0; i < mCurlMeshes.length; ++i) {
-						mRenderer.removeCurlMesh(mCurlMeshes[i]);
-					}
-					CurlMesh curl = mCurlMeshes[PAGE_LEFT];
-					mCurlMeshes[PAGE_LEFT] = mCurlMeshes[PAGE_CURRENT];
-					mCurlMeshes[PAGE_CURRENT] = curl;
-					if (mCurrentIndex > 1) {
-						Bitmap bitmap = mBitmapProvider.getBitmap(mBitmapWidth,
-								mBitmapHeight, mCurrentIndex - 2);
-						mCurlMeshes[PAGE_LEFT].setBitmap(bitmap);
-						mCurlMeshes[PAGE_LEFT].setRect(mRenderer
-								.getPageRect(CurlRenderer.PAGE_LEFT));
-						mCurlMeshes[PAGE_LEFT].reset();
-						mRenderer.addCurlMesh(mCurlMeshes[PAGE_LEFT]);
-					}
-					if (mCurrentIndex < mBitmapProvider.getBitmapCount()) {
-						mCurlMeshes[PAGE_RIGHT].setRect(mRenderer
-								.getPageRect(CurlRenderer.PAGE_RIGHT));
-						mCurlMeshes[PAGE_RIGHT].reset();
-						mRenderer.addCurlMesh(mCurlMeshes[PAGE_RIGHT]);
-					}
-					mCurlMeshes[PAGE_CURRENT].setRect(mRenderer
-							.getPageRect(CurlRenderer.PAGE_RIGHT));
-					mCurlMeshes[PAGE_CURRENT].reset();
-					mRenderer.addCurlMesh(mCurlMeshes[PAGE_CURRENT]);
-					mCurlState = CURL_LEFT;
+					mStartPos = mRenderer.getPos(0, me.getY());
+					startCurl(CURL_LEFT);
 				}
 			}
-			mStartPos = mRenderer.getPos(x, y);
-		} else if (me.getAction() == MotionEvent.ACTION_MOVE) {
-			switch (mCurlState) {
-			case CURL_RIGHT: {
-				PointF curPos = mRenderer.getPos(me.getX(), me.getY());
-
-				PointF dirVec = new PointF();
-				dirVec.x = curPos.x - mStartPos.x;
-				dirVec.y = curPos.y - mStartPos.y;
-				float dist = (float) Math.sqrt(dirVec.x * dirVec.x + dirVec.y
-						* dirVec.y);
-				dirVec.x /= dist;
-				dirVec.y /= dist;
-
-				setCurlPos(curPos, dirVec, 0.3f, dist);
-				requestRender();
-				break;
-			}
-			case CURL_LEFT: {
-				PointF curPos = mRenderer.getPos(me.getX(), me.getY());
-				curPos.x -= 0.3f;
-
-				PointF dirVec = new PointF();
-				dirVec.x = curPos.x + mStartPos.x;
-				dirVec.y = curPos.y - mStartPos.y;
-				float dist = (float) Math.sqrt(dirVec.x * dirVec.x + dirVec.y
-						* dirVec.y);
-				dirVec.x /= dist;
-				dirVec.y /= dist;
-
-				setCurlPos(curPos, dirVec, 0.3f);
-				requestRender();
-				break;
-			}
-			}
-		} else if (me.getAction() == MotionEvent.ACTION_CANCEL
-				|| me.getAction() == MotionEvent.ACTION_UP) {
+			break;
+		}
+		case MotionEvent.ACTION_MOVE: {
+			updateCurl(mRenderer.getPos(me.getX(), me.getY()));
+			break;
+		}
+		case MotionEvent.ACTION_CANCEL:
+		case MotionEvent.ACTION_UP: {
 			if (mCurlState == CURL_LEFT || mCurlState == CURL_RIGHT) {
 				mAnimationSource = mRenderer.getPos(me.getX(), me.getY());
 				mAnimationStartTime = System.currentTimeMillis();
@@ -278,22 +174,30 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 				if (me.getX() > getWidth() / 2) {
 					mAnimationTarget = new PointF();
 					mAnimationTarget.set(mStartPos);
-					mAnimationTarget.x = mRenderer.getPos(getWidth(), 0).x;
+					mAnimationTarget.x = mRenderer
+							.getPageRect(CurlRenderer.PAGE_RIGHT).right;
+					mAnimationTargetEvent = PAGE_RIGHT;
 				} else {
 					mAnimationTarget = new PointF();
 					mAnimationTarget.set(mStartPos);
 					mAnimationTarget.x = mRenderer.getPos(0, 0).x;
-					if (mCurlState == CURL_RIGHT) {
-						mAnimationTarget.x = mRenderer.getPos(-getWidth(), 0).x;
+					if (mCurlState == CURL_RIGHT
+							|| mRenderer.getViewMode() == CurlRenderer.SHOW_TWO_PAGES) {
+						mAnimationTarget.x = mRenderer
+								.getPageRect(CurlRenderer.PAGE_LEFT).left;
 					} else {
 						mAnimationSource.x -= 0.3f;
 						mAnimationTarget.x -= 0.3f;
 					}
+					mAnimationTargetEvent = PAGE_LEFT;
 				}
 				mAnimate = true;
 				requestRender();
 			}
+			break;
 		}
+		}
+
 		return true;
 	}
 
@@ -319,35 +223,105 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		mCurlMeshes = new CurlMesh[3];
 		for (int i = 0; i < mCurlMeshes.length; ++i) {
 			mCurlMeshes[i] = new CurlMesh(10);
-			mCurlMeshes[i].setTexRect(new RectF(0, 0, 1, 1));
 		}
+		mCurlMeshes[PAGE_LEFT].setTexRect(new RectF(1, 0, 0, 1));
+		mCurlMeshes[PAGE_RIGHT].setTexRect(new RectF(0, 0, 1, 1));
 	}
 
 	/**
-	 * Sets curl position.
+	 * Sets PAGE_CURL mesh curl position.
 	 */
 	private void setCurlPos(PointF curlPos, PointF curlDir, double radius) {
-		mCurlMeshes[PAGE_CURRENT].curl(curlPos, curlDir, radius);
+		// TODO: Calculate curl position at page top and bottom and make sure
+		// page doesn't 'tear off'.
+		mCurlMeshes[PAGE_CURL].curl(curlPos, curlDir, radius);
+		requestRender();
 	}
 
 	/**
-	 * Calculates curl position from pointerPos and dist, meaning that edge of
-	 * mesh follows pointerPos.
+	 * Switches meshes and loads new bitmaps if available.
 	 */
-	private void setCurlPos(PointF pointerPos, PointF curlDir, double radius,
-			double dist) {
-		double curlLen = radius * Math.PI;
-		if (dist >= curlLen) {
-			double translate = (dist - curlLen) / 2;
-			pointerPos.x -= curlDir.x * translate;
-			pointerPos.y -= curlDir.y * translate;
-		} else {
-			double angle = Math.PI * Math.sqrt(dist / curlLen);
-			double translate = radius * Math.sin(angle);
-			pointerPos.x += curlDir.x * translate;
-			pointerPos.y += curlDir.y * translate;
+	private void startCurl(int page) {
+		switch (page) {
+
+		// Once right side page is curled, first right page is assigned into
+		// curled
+		// page. And if there are more bitmaps available new bitmap is loaded
+		// into right side mesh.
+		case CURL_RIGHT: {
+			for (int i = 0; i < mCurlMeshes.length; ++i) {
+				mRenderer.removeCurlMesh(mCurlMeshes[i]);
+			}
+			CurlMesh curl = mCurlMeshes[PAGE_RIGHT];
+			mCurlMeshes[PAGE_RIGHT] = mCurlMeshes[PAGE_CURL];
+			mCurlMeshes[PAGE_CURL] = curl;
+			if (mCurrentIndex > 0) {
+				mCurlMeshes[PAGE_LEFT].setRect(mRenderer
+						.getPageRect(CurlRenderer.PAGE_LEFT));
+				mCurlMeshes[PAGE_LEFT].reset();
+				mRenderer.addCurlMesh(mCurlMeshes[PAGE_LEFT]);
+			}
+			if (mCurrentIndex < mBitmapProvider.getBitmapCount() - 1) {
+				Bitmap bitmap = mBitmapProvider.getBitmap(mBitmapWidth,
+						mBitmapHeight, mCurrentIndex + 1);
+				mCurlMeshes[PAGE_RIGHT].setBitmap(bitmap);
+				mCurlMeshes[PAGE_RIGHT].setRect(mRenderer
+						.getPageRect(CurlRenderer.PAGE_RIGHT));
+				mCurlMeshes[PAGE_RIGHT].setTexRect(new RectF(0, 0, 1, 1));
+				mCurlMeshes[PAGE_RIGHT].reset();
+				mRenderer.addCurlMesh(mCurlMeshes[PAGE_RIGHT]);
+			}
+			mCurlMeshes[PAGE_CURL].setRect(mRenderer
+					.getPageRect(CurlRenderer.PAGE_RIGHT));
+			mCurlMeshes[PAGE_CURL].setTexRect(new RectF(0, 0, 1, 1));
+			mCurlMeshes[PAGE_CURL].reset();
+			mRenderer.addCurlMesh(mCurlMeshes[PAGE_CURL]);
+			mCurlState = CURL_RIGHT;
+			break;
 		}
-		setCurlPos(pointerPos, curlDir, radius);
+
+			// On left side curl, left page is assigned to curled page. And if
+			// there are more bitmaps available before currentIndex, new bitmap
+			// is loaded into left page.
+		case CURL_LEFT: {
+			for (int i = 0; i < mCurlMeshes.length; ++i) {
+				mRenderer.removeCurlMesh(mCurlMeshes[i]);
+			}
+			CurlMesh curl = mCurlMeshes[PAGE_LEFT];
+			mCurlMeshes[PAGE_LEFT] = mCurlMeshes[PAGE_CURL];
+			mCurlMeshes[PAGE_CURL] = curl;
+			if (mCurrentIndex > 1) {
+				Bitmap bitmap = mBitmapProvider.getBitmap(mBitmapWidth,
+						mBitmapHeight, mCurrentIndex - 2);
+				mCurlMeshes[PAGE_LEFT].setBitmap(bitmap);
+				mCurlMeshes[PAGE_LEFT].setRect(mRenderer
+						.getPageRect(CurlRenderer.PAGE_LEFT));
+				mCurlMeshes[PAGE_LEFT].setTexRect(new RectF(1, 0, 0, 1));
+				mCurlMeshes[PAGE_LEFT].reset();
+				mRenderer.addCurlMesh(mCurlMeshes[PAGE_LEFT]);
+			}
+			if (mCurrentIndex < mBitmapProvider.getBitmapCount()) {
+				mCurlMeshes[PAGE_RIGHT].setRect(mRenderer
+						.getPageRect(CurlRenderer.PAGE_RIGHT));
+				mCurlMeshes[PAGE_RIGHT].reset();
+				mRenderer.addCurlMesh(mCurlMeshes[PAGE_RIGHT]);
+			}
+			if (mRenderer.getViewMode() == CurlRenderer.SHOW_ONE_PAGE) {
+				mCurlMeshes[PAGE_CURL].setRect(mRenderer
+						.getPageRect(CurlRenderer.PAGE_RIGHT));
+				mCurlMeshes[PAGE_CURL].setTexRect(new RectF(0, 0, 1, 1));
+			} else {
+				mCurlMeshes[PAGE_CURL].setRect(mRenderer
+						.getPageRect(CurlRenderer.PAGE_LEFT));
+				mCurlMeshes[PAGE_CURL].setTexRect(new RectF(1, 0, 0, 1));
+			}
+			mCurlMeshes[PAGE_CURL].reset();
+			mRenderer.addCurlMesh(mCurlMeshes[PAGE_CURL]);
+			mCurlState = CURL_LEFT;
+			break;
+		}
+
+		}
 	}
 
 	/**
@@ -358,6 +332,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			return;
 		}
 
+		// Remove meshes from renderer.
 		for (int i = 0; i < mCurlMeshes.length; ++i) {
 			mRenderer.removeCurlMesh(mCurlMeshes[i]);
 		}
@@ -380,6 +355,52 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 					.getPageRect(CurlRenderer.PAGE_LEFT));
 			mCurlMeshes[PAGE_LEFT].reset();
 			mRenderer.addCurlMesh(mCurlMeshes[PAGE_LEFT]);
+		}
+	}
+
+	/**
+	 * Updates curl position.
+	 */
+	private void updateCurl(PointF pointerPos) {
+
+		// Default curl radius.
+		double radius = .3f;
+
+		if (mCurlState == CURL_RIGHT
+				|| (mCurlState == CURL_LEFT && mRenderer.getViewMode() == CurlRenderer.SHOW_TWO_PAGES)) {
+			PointF dirVec = new PointF();
+			dirVec.x = pointerPos.x - mStartPos.x;
+			dirVec.y = pointerPos.y - mStartPos.y;
+			float dist = (float) Math.sqrt(dirVec.x * dirVec.x + dirVec.y
+					* dirVec.y);
+			dirVec.x /= dist;
+			dirVec.y /= dist;
+
+			double curlLen = radius * Math.PI;
+			if (dist >= curlLen) {
+				double translate = (dist - curlLen) / 2;
+				pointerPos.x -= dirVec.x * translate;
+				pointerPos.y -= dirVec.y * translate;
+			} else {
+				double angle = Math.PI * Math.sqrt(dist / curlLen);
+				double translate = radius * Math.sin(angle);
+				pointerPos.x += dirVec.x * translate;
+				pointerPos.y += dirVec.y * translate;
+			}
+
+			setCurlPos(pointerPos, dirVec, radius);
+		} else if (mCurlState == CURL_LEFT) {
+			pointerPos.x -= radius;
+
+			PointF dirVec = new PointF();
+			dirVec.x = pointerPos.x + mStartPos.x;
+			dirVec.y = pointerPos.y - mStartPos.y;
+			float dist = (float) Math.sqrt(dirVec.x * dirVec.x + dirVec.y
+					* dirVec.y);
+			dirVec.x /= dist;
+			dirVec.y /= dist;
+
+			setCurlPos(pointerPos, dirVec, radius);
 		}
 	}
 

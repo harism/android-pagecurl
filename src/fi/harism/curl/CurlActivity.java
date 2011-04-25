@@ -49,7 +49,7 @@ public class CurlActivity extends Activity {
 		public Bitmap getBitmap(int width, int height, int index) {
 			Bitmap b = Bitmap.createBitmap(width, height,
 					Bitmap.Config.ARGB_8888);
-			b.eraseColor(0xFFE0E0E0);
+			b.eraseColor(0xFFFFFFFF);
 			Canvas c = new Canvas(b);
 			Drawable d = getResources().getDrawable(mBitmapIds[index]);
 
