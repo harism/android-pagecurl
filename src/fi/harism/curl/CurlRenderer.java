@@ -136,6 +136,8 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		setBackgroundColor(0xFF303030);
 		gl.glShadeModel(GL10.GL_SMOOTH);
 		gl.glHint(GL10.GL_PERSPECTIVE_CORRECTION_HINT, GL10.GL_NICEST);
+		gl.glDisable(GL10.GL_DEPTH_TEST);
+		gl.glDisable(GL10.GL_CULL_FACE);
 	}
 
 	/**
