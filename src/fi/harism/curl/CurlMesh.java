@@ -353,7 +353,10 @@ public class CurlMesh {
 		// If mBitmap != null we have new texture.
 		if (mBitmap != null) {
 			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
-			GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, mBitmap, 0);
+			GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, Bitmap
+					.createScaledBitmap(mBitmap,
+							getNextHighestPO2(mBitmap.getWidth()),
+							getNextHighestPO2(mBitmap.getHeight()), true), 0);
 			mBitmap = null;
 		}
 
@@ -498,6 +501,24 @@ public class CurlMesh {
 		mColors.put((float) vertex.mColor);
 		mColors.put((float) vertex.mColor);
 		mColors.put((float) vertex.mAlpha);
+	}
+
+	/**
+	 * Calculates the next highest power of two for a given integer.
+	 * 
+	 * @param n
+	 *            the number
+	 * @return a power of two equal to or higher than n
+	 */
+	private int getNextHighestPO2(int n) {
+		n -= 1;
+		n = n | (n >> 1);
+		n = n | (n >> 2);
+		n = n | (n >> 4);
+		n = n | (n >> 8);
+		n = n | (n >> 16);
+		n = n | (n >> 32);
+		return n + 1;
 	}
 
 	/**
