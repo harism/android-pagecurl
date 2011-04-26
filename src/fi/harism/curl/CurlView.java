@@ -6,6 +6,7 @@ import android.graphics.PointF;
 import android.graphics.RectF;
 import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -129,9 +130,9 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		super.onSizeChanged(w, h, ow, oh);
 
 		if (h > w) {
-			//mRenderer.setViewMode(CurlRenderer.SHOW_ONE_PAGE);
+			mRenderer.setViewMode(CurlRenderer.SHOW_ONE_PAGE);
 		} else {
-			//mRenderer.setViewMode(CurlRenderer.SHOW_TWO_PAGES);
+			mRenderer.setViewMode(CurlRenderer.SHOW_TWO_PAGES);
 		}
 
 		requestRender();
@@ -232,8 +233,47 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	 * Sets PAGE_CURL mesh curl position.
 	 */
 	private void setCurlPos(PointF curlPos, PointF curlDir, double radius) {
-		// TODO: Calculate curl position at page top and bottom and make sure
-		// page doesn't 'tear off'.
+		if (mCurlState == CURL_RIGHT
+				|| (mCurlState == CURL_LEFT && mRenderer.getViewMode() == CurlRenderer.SHOW_ONE_PAGE)) {
+			RectF pageRect = mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT);
+			if (curlPos.x < pageRect.left) {
+				curlPos.x = pageRect.left;
+			}
+			if (curlDir.y < 0) {
+				float diffX = curlPos.x - pageRect.left;
+				float y = curlPos.y - (diffX * curlDir.x);
+				if (y < pageRect.top) {
+					curlPos.y += pageRect.top - y;
+				}
+			}
+			if (curlDir.y > 0) {
+				float diffX = curlPos.x - pageRect.left;
+				float y = curlPos.y + (diffX * curlDir.x);
+				if (y > pageRect.bottom) {
+					curlPos.y -= y - pageRect.bottom;
+				}
+			}
+		} else if (mCurlState == CURL_LEFT) {
+			RectF pageRect = mRenderer.getPageRect(CurlRenderer.PAGE_LEFT);
+			if (curlPos.x > pageRect.right) {
+				curlPos.x = pageRect.right;
+			}
+			if (curlDir.y < 0) {
+				float diffX = pageRect.right - curlPos.x;
+				float y = curlPos.y - (diffX * curlDir.x);
+				if (y < pageRect.top) {
+					curlPos.y += pageRect.top - y;
+				}
+			}
+			if (curlDir.y > 0) {
+				float diffX = pageRect.right - curlPos.x;
+				float y = curlPos.y + (diffX * curlDir.x);
+				if (y > pageRect.bottom) {
+					curlPos.y -= y - pageRect.bottom;
+				}
+			}
+		}
+
 		mCurlMeshes[PAGE_CURL].curl(curlPos, curlDir, radius);
 		requestRender();
 	}
@@ -376,7 +416,14 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			dirVec.x /= dist;
 			dirVec.y /= dist;
 
+			float pageWidth = mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT)
+					.width();
 			double curlLen = radius * Math.PI;
+			if (dist > (pageWidth * 2) - curlLen) {
+				curlLen = Math.max((pageWidth * 2) - dist, 0.001f);
+				radius = curlLen / Math.PI;
+			}
+
 			if (dist >= curlLen) {
 				double translate = (dist - curlLen) / 2;
 				pointerPos.x -= dirVec.x * translate;

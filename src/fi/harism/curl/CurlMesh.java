@@ -230,8 +230,13 @@ public class CurlMesh {
 			while (out.size() > 0) {
 				Vertex v = out.remove(0);
 
+				// Untouched vertices.
+				if (i == 0) {
+					v.mAlpha = mSwapAlpha ? BACKFACE_ALPHA : FRONTFACE_ALPHA;
+					mVerticesCountFront++;
+				}
 				// 'Completely' rotated vertices.
-				if (v.mPosX <= -curlLength) {
+				else if (i == scanLines.size() - 1 || radius == 0) {
 					v.mPosX = -(curlLength + v.mPosX);
 					v.mPosZ = 2 * radius;
 
@@ -239,7 +244,7 @@ public class CurlMesh {
 					mVerticesCountBack++;
 				}
 				// Vertex lies within 'curl'.
-				else if (v.mPosX < 0) {
+				else {
 					double rotY = Math.PI / 2;
 					rotY -= Math.PI * (v.mPosX / curlLength);
 					// rotY = -rotY;
@@ -256,9 +261,6 @@ public class CurlMesh {
 								: FRONTFACE_ALPHA;
 						mVerticesCountFront++;
 					}
-				} else {
-					v.mAlpha = mSwapAlpha ? BACKFACE_ALPHA : FRONTFACE_ALPHA;
-					mVerticesCountFront++;
 				}
 
 				// Rotate vertex back to 'world' coordinates.
@@ -279,7 +281,7 @@ public class CurlMesh {
 					dropShadowVertices.add(idx, sv);
 				}
 				// Self shadow is cast partly over mesh.
-				if (v.mPosZ >= radius) {
+				if (v.mPosZ > radius) {
 					// TODO: Shadow penumbra direction is not good, shouldn't be
 					// calculated using only directionVec.
 					ShadowVertex sv = new ShadowVertex();
