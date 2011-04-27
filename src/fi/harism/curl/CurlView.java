@@ -442,7 +442,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 					.width();
 			double curlLen = radius * Math.PI;
 			if (dist > (pageWidth * 2) - curlLen) {
-				curlLen = Math.max((pageWidth * 2) - dist, 0.001f);
+				curlLen = Math.max((pageWidth * 2) - dist, 0f);
 				radius = curlLen / Math.PI;
 			}
 
