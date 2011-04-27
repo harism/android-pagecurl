@@ -11,6 +11,7 @@ import android.graphics.Bitmap;
 import android.graphics.PointF;
 import android.graphics.RectF;
 import android.opengl.GLUtils;
+import android.util.Log;
 
 /**
  * Class implementing actual curl.
@@ -78,7 +79,7 @@ public class CurlMesh {
 			mHelperLines.position(0);
 		}
 
-		int maxVerticesCount = 4 + 2 * mMaxCurlSplits;
+		int maxVerticesCount = 4 + 2 + 2 * mMaxCurlSplits;
 		ByteBuffer vbb = ByteBuffer.allocateDirect(maxVerticesCount * 3 * 4);
 		vbb.order(ByteOrder.nativeOrder());
 		mVertices = vbb.asFloatBuffer();
@@ -94,7 +95,7 @@ public class CurlMesh {
 		mColors = cbb.asFloatBuffer();
 		mColors.position(0);
 
-		int maxShadowVerticesCount = (mMaxCurlSplits + 1) * 2 * 2;
+		int maxShadowVerticesCount = (mMaxCurlSplits + 2) * 2 * 2;
 		ByteBuffer scbb = ByteBuffer
 				.allocateDirect(maxShadowVerticesCount * 4 * 4);
 		scbb.order(ByteOrder.nativeOrder());
@@ -163,20 +164,36 @@ public class CurlMesh {
 
 			int j = 0;
 			for (; j < rotatedVertices.size(); ++j) {
-				Vertex v2 = rotatedVertices.elementAt(j);
-				// We want to test for equality but rotating messes this unless
-				// we check against certain error margin instead.
-				double errormargin = 0.001f;
-				if (Math.abs(v.mPosX - v2.mPosX) <= errormargin
-						&& v.mPosY < v2.mPosY) {
-					break;
-				}
-				if (Math.abs(v.mPosX - v2.mPosX) > errormargin
-						&& v.mPosX > v2.mPosX) {
+				Vertex v2 = rotatedVertices.get(j);
+				if (v.mPosX > v2.mPosX) {
 					break;
 				}
 			}
 			rotatedVertices.add(j, v);
+		}
+		// Reconstruct rectangle by sorting vertices regarding distance from
+		// right most vertex.
+		for (int i = 1; i < 3; ++i) {
+			Vertex v0 = rotatedVertices.get(0);
+			Vertex vi = rotatedVertices.get(i);
+			Vertex vii = rotatedVertices.get(i + 1);
+			double dist1 = Math
+					.sqrt(((v0.mPosX - vi.mPosX) * (v0.mPosX - vi.mPosX))
+							+ ((v0.mPosY - vi.mPosY) * (v0.mPosY - vi.mPosY)));
+			double dist2 = Math
+					.sqrt(((v0.mPosX - vii.mPosX) * (v0.mPosX - vii.mPosX))
+							+ ((v0.mPosY - vii.mPosY) * (v0.mPosY - vii.mPosY)));
+			if (dist1 > dist2) {
+				rotatedVertices.set(i, vii);
+				rotatedVertices.set(i + 1, vi);
+			}
+		}
+		// We want vertex at pos 1 to be right from vertex at pos 2. This is
+		// required for later scan line algorithm to work properly.
+		if (rotatedVertices.get(1).mPosX < rotatedVertices.get(2).mPosX) {
+			Vertex v = rotatedVertices.get(1);
+			rotatedVertices.set(1, rotatedVertices.get(2));
+			rotatedVertices.set(2, v);
 		}
 
 		mVerticesCountFront = mVerticesCountBack = 0;
@@ -184,7 +201,7 @@ public class CurlMesh {
 		Vector<ShadowVertex> selfShadowVertices = new Vector<ShadowVertex>();
 
 		// Our rectangle lines/vertex indices.
-		int lines[] = { 0, 1, 2, 0, 3, 1, 3, 2 };
+		int lines[] = { 0, 1, 0, 2, 3, 1, 3, 2 };
 		// Length of 'curl' curve.
 		double curlLength = Math.PI * radius;
 		// Calculate scan lines.
@@ -195,35 +212,46 @@ public class CurlMesh {
 		for (int i = 1; i < mMaxCurlSplits; ++i) {
 			scanLines.add((-curlLength * i) / (mMaxCurlSplits - 1));
 		}
-		scanLines.add(rotatedVertices.elementAt(3).mPosX - 1);
+		scanLines.add(rotatedVertices.get(3).mPosX - 1);
 
 		// Start from right most vertex.
-		double scanXmax = rotatedVertices.elementAt(0).mPosX + 1;
+		double scanXmax = rotatedVertices.get(0).mPosX + 1;
 		Vector<Vertex> out = new Vector<Vertex>();
 		for (int i = 0; i < scanLines.size(); ++i) {
-			double scanXmin = scanLines.elementAt(i);
+			double scanXmin = scanLines.get(i);
 			// First iterate vertices within scan area.
 			for (int j = 0; j < rotatedVertices.size(); ++j) {
-				Vertex v = rotatedVertices.elementAt(j);
-				if (v.mPosX >= scanXmin && v.mPosX < scanXmax) {
+				Vertex v = rotatedVertices.get(j);
+				if (v.mPosX >= scanXmin && v.mPosX <= scanXmax) {
 					Vertex n = new Vertex(v);
-					out.add(n);
+					Vector<Vertex> intersections = getIntersections(
+							rotatedVertices, lines, n.mPosX);
+					if (intersections.size() == 1
+							&& intersections.get(0).mPosY > v.mPosY) {
+						out.addAll(intersections);
+						out.add(n);
+					} else if (intersections.size() <= 1) {
+						out.add(n);
+						out.addAll(intersections);
+					} else {
+						Log.d("CurlMesh", "Intersections size > 1");
+					}
 				}
 			}
 			// Search for line intersections.
-			for (int j = 0; j < lines.length; j += 2) {
-				Vertex v1 = rotatedVertices.elementAt(lines[j]);
-				Vertex v2 = rotatedVertices.elementAt(lines[j + 1]);
-				if ((v1.mPosX > scanXmin && v2.mPosX < scanXmin)
-						|| (v2.mPosX > scanXmin && v1.mPosX < scanXmin)) {
-					Vertex n = new Vertex(v2);
-					n.mPosX = scanXmin;
-					double c = (scanXmin - v2.mPosX) / (v1.mPosX - v2.mPosX);
-					n.mPosY += (v1.mPosY - v2.mPosY) * c;
-					n.mTexX += (v1.mTexX - v2.mTexX) * c;
-					n.mTexY += (v1.mTexY - v2.mTexY) * c;
-					out.add(n);
+			Vector<Vertex> intersections = getIntersections(rotatedVertices,
+					lines, scanXmin);
+			if (intersections.size() == 2) {
+				Vertex v1 = intersections.get(0);
+				Vertex v2 = intersections.get(1);
+				if (v1.mPosY < v2.mPosY) {
+					out.add(v2);
+					out.add(v1);
+				} else {
+					out.addAll(intersections);
 				}
+			} else if (intersections.size() != 0) {
+				Log.d("CurlMesh", "Intersections size != 0 or 2");
 			}
 
 			// Add vertices to out buffers.
@@ -236,7 +264,7 @@ public class CurlMesh {
 					mVerticesCountFront++;
 				}
 				// 'Completely' rotated vertices.
-				else if (i == scanLines.size() - 1 || radius == 0) {
+				else if (i == scanLines.size() - 1 || curlLength == 0) {
 					v.mPosX = -(curlLength + v.mPosX);
 					v.mPosZ = 2 * radius;
 
@@ -247,7 +275,6 @@ public class CurlMesh {
 				else {
 					double rotY = Math.PI / 2;
 					rotY -= Math.PI * (v.mPosX / curlLength);
-					// rotY = -rotY;
 					v.mPosX = radius * Math.cos(rotY);
 					v.mPosZ = radius + (radius * -Math.sin(rotY));
 					v.mColor = Math.sqrt(Math.cos(rotY) + 1);
@@ -353,10 +380,7 @@ public class CurlMesh {
 		// If mBitmap != null we have new texture.
 		if (mBitmap != null) {
 			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
-			GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, Bitmap
-					.createScaledBitmap(mBitmap,
-							getNextHighestPO2(mBitmap.getWidth()),
-							getNextHighestPO2(mBitmap.getHeight()), true), 0);
+			GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, mBitmap, 0);
 			mBitmap = null;
 		}
 
@@ -451,7 +475,9 @@ public class CurlMesh {
 	 * Sets new texture for this mesh.
 	 */
 	public void setBitmap(Bitmap bitmap) {
-		mBitmap = bitmap;
+		mBitmap = Bitmap.createScaledBitmap(bitmap,
+				getNextHighestPO2(bitmap.getWidth()),
+				getNextHighestPO2(bitmap.getHeight()), true);
 	}
 
 	/**
@@ -504,11 +530,30 @@ public class CurlMesh {
 	}
 
 	/**
+	 * Calculates intersections for given scan line.
+	 */
+	private Vector<Vertex> getIntersections(Vector<Vertex> vertices,
+			int[] lineIndices, double scanX) {
+		Vector<Vertex> ret = new Vector<Vertex>();
+		for (int j = 0; j < lineIndices.length; j += 2) {
+			Vertex v1 = vertices.get(lineIndices[j]);
+			Vertex v2 = vertices.get(lineIndices[j + 1]);
+			if ((v1.mPosX > scanX && v2.mPosX < scanX)
+					|| (v2.mPosX > scanX && v1.mPosX < scanX)) {
+				Vertex n = new Vertex(v2);
+				n.mPosX = scanX;
+				double c = (scanX - v2.mPosX) / (v1.mPosX - v2.mPosX);
+				n.mPosY += (v1.mPosY - v2.mPosY) * c;
+				n.mTexX += (v1.mTexX - v2.mTexX) * c;
+				n.mTexY += (v1.mTexY - v2.mTexY) * c;
+				ret.add(n);
+			}
+		}
+		return ret;
+	}
+
+	/**
 	 * Calculates the next highest power of two for a given integer.
-	 * 
-	 * @param n
-	 *            the number
-	 * @return a power of two equal to or higher than n
 	 */
 	private int getNextHighestPO2(int n) {
 		n -= 1;
