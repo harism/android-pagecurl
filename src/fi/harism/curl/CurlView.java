@@ -38,10 +38,13 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 
 	// Start position for dragging.
 	private PointF mDragStartPos = new PointF();
+	private PointF mPointerPos = new PointF();
+	private PointF mCurlPos = new PointF();
+	private PointF mCurlDir = new PointF();
 
 	private boolean mAnimate = false;
-	private PointF mAnimationSource;
-	private PointF mAnimationTarget;
+	private PointF mAnimationSource = new PointF();
+	private PointF mAnimationTarget = new PointF();
 	private long mAnimationStartTime;
 	private long mAnimationDurationTime;
 	private int mAnimationTargetEvent;
@@ -50,6 +53,9 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 
 	private CurlRenderer mRenderer;
 	private CurlBitmapProvider mBitmapProvider;
+
+	private static final RectF TEXTURE_RECT_FRONT = new RectF(0, 0, 1, 1);
+	private static final RectF TEXTURE_RECT_BACK = new RectF(1, 0, 0, 1);
 
 	/**
 	 * Default constructor.
@@ -97,7 +103,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 				CurlMesh right = mPageCurl;
 				CurlMesh curl = mPageRight;
 				right.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT));
-				right.setTexRect(new RectF(0, 0, 1, 1));
+				right.setTexRect(TEXTURE_RECT_FRONT);
 				right.reset();
 				mRenderer.removeCurlMesh(curl);
 				mPageCurl = curl;
@@ -111,7 +117,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 				CurlMesh left = mPageCurl;
 				CurlMesh curl = mPageLeft;
 				left.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
-				left.setTexRect(new RectF(1, 0, 0, 1));
+				left.setTexRect(TEXTURE_RECT_BACK);
 				left.reset();
 				mRenderer.removeCurlMesh(curl);
 				mPageCurl = curl;
@@ -125,15 +131,14 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			mAnimate = false;
 			requestRender();
 		} else {
-			PointF pos = new PointF();
-			pos.set(mAnimationSource);
-			pos.x += (mAnimationTarget.x - mAnimationSource.x)
+			mPointerPos.set(mAnimationSource);
+			mPointerPos.x += (mAnimationTarget.x - mAnimationSource.x)
 					* (currentTime - mAnimationStartTime)
 					/ mAnimationDurationTime;
-			pos.y += (mAnimationTarget.y - mAnimationSource.y)
+			mPointerPos.y += (mAnimationTarget.y - mAnimationSource.y)
 					* (currentTime - mAnimationStartTime)
 					/ mAnimationDurationTime;
-			updateCurl(pos);
+			updateCurl(mPointerPos);
 		}
 	}
 
@@ -163,42 +168,50 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			float x = me.getX();
 			if (x > getWidth() / 2) {
 				if (mCurrentIndex < mBitmapProvider.getBitmapCount()) {
-					mDragStartPos = mRenderer.getPos(getWidth(), me.getY());
+					mDragStartPos.x = getWidth();
+					mDragStartPos.y = me.getY();
+					mRenderer.translate(mDragStartPos);
 					startCurl(CURL_RIGHT);
 				}
 			} else {
 				if (mCurrentIndex > 0) {
-					mDragStartPos = mRenderer.getPos(0, me.getY());
+					mDragStartPos.x = 0;
+					mDragStartPos.y = me.getY();
+					mRenderer.translate(mDragStartPos);
 					startCurl(CURL_LEFT);
 				}
 			}
 			break;
 		}
 		case MotionEvent.ACTION_MOVE: {
-			updateCurl(mRenderer.getPos(me.getX(), me.getY()));
+			mPointerPos.x = me.getX();
+			mPointerPos.y = me.getY();
+			mRenderer.translate(mPointerPos);
+			updateCurl(mPointerPos);
 			break;
 		}
 		case MotionEvent.ACTION_CANCEL:
 		case MotionEvent.ACTION_UP: {
 			if (mCurlState == CURL_LEFT || mCurlState == CURL_RIGHT) {
-				mAnimationSource = mRenderer.getPos(me.getX(), me.getY());
+				mAnimationSource.x = me.getX();
+				mAnimationSource.y = me.getY();
+				mRenderer.translate(mAnimationSource);
 				mAnimationStartTime = System.currentTimeMillis();
 				mAnimationDurationTime = 300;
 				if (me.getX() > getWidth() / 2) {
-					mAnimationTarget = new PointF();
 					mAnimationTarget.set(mDragStartPos);
 					mAnimationTarget.x = mRenderer
 							.getPageRect(CurlRenderer.PAGE_RIGHT).right;
 					mAnimationTargetEvent = SET_CURL_TO_RIGHT;
 				} else {
-					mAnimationTarget = new PointF();
 					mAnimationTarget.set(mDragStartPos);
-					mAnimationTarget.x = mRenderer.getPos(0, 0).x;
 					if (mCurlState == CURL_RIGHT
 							|| mRenderer.getViewMode() == CurlRenderer.SHOW_TWO_PAGES) {
 						mAnimationTarget.x = mRenderer
 								.getPageRect(CurlRenderer.PAGE_LEFT).left;
 					} else {
+						mAnimationTarget.x = mRenderer
+								.getPageRect(CurlRenderer.PAGE_RIGHT).left;
 						mAnimationSource.x -= 0.3f;
 						mAnimationTarget.x -= 0.3f;
 					}
@@ -236,8 +249,8 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		mPageLeft = new CurlMesh(10);
 		mPageRight = new CurlMesh(10);
 		mPageCurl = new CurlMesh(10);
-		mPageLeft.setTexRect(new RectF(1, 0, 0, 1));
-		mPageRight.setTexRect(new RectF(0, 0, 1, 1));
+		mPageLeft.setTexRect(TEXTURE_RECT_BACK);
+		mPageRight.setTexRect(TEXTURE_RECT_FRONT);
 	}
 
 	/**
@@ -319,14 +332,14 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 				mPageRight.setBitmap(bitmap);
 				mPageRight.setRect(mRenderer
 						.getPageRect(CurlRenderer.PAGE_RIGHT));
-				mPageRight.setTexRect(new RectF(0, 0, 1, 1));
+				mPageRight.setTexRect(TEXTURE_RECT_FRONT);
 				mPageRight.reset();
 				mRenderer.addCurlMesh(mPageRight);
 			}
 
 			// Add curled page to renderer.
 			mPageCurl.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT));
-			mPageCurl.setTexRect(new RectF(0, 0, 1, 1));
+			mPageCurl.setTexRect(TEXTURE_RECT_FRONT);
 			mPageCurl.reset();
 			mRenderer.addCurlMesh(mPageCurl);
 
@@ -355,7 +368,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 				mPageLeft.setBitmap(bitmap);
 				mPageLeft
 						.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
-				mPageLeft.setTexRect(new RectF(1, 0, 0, 1));
+				mPageLeft.setTexRect(TEXTURE_RECT_BACK);
 				mPageLeft.reset();
 				mRenderer.addCurlMesh(mPageLeft);
 			}
@@ -372,11 +385,11 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			if (mRenderer.getViewMode() == CurlRenderer.SHOW_ONE_PAGE) {
 				mPageCurl.setRect(mRenderer
 						.getPageRect(CurlRenderer.PAGE_RIGHT));
-				mPageCurl.setTexRect(new RectF(0, 0, 1, 1));
+				mPageCurl.setTexRect(TEXTURE_RECT_FRONT);
 			} else {
 				mPageCurl
 						.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
-				mPageCurl.setTexRect(new RectF(1, 0, 0, 1));
+				mPageCurl.setTexRect(TEXTURE_RECT_BACK);
 			}
 			mPageCurl.reset();
 			mRenderer.addCurlMesh(mPageCurl);
@@ -427,16 +440,16 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 
 		// Default curl radius.
 		double radius = .3f;
+		mCurlPos.set(pointerPos);
 
 		if (mCurlState == CURL_RIGHT
 				|| (mCurlState == CURL_LEFT && mRenderer.getViewMode() == CurlRenderer.SHOW_TWO_PAGES)) {
-			PointF dirVec = new PointF();
-			dirVec.x = pointerPos.x - mDragStartPos.x;
-			dirVec.y = pointerPos.y - mDragStartPos.y;
-			float dist = (float) Math.sqrt(dirVec.x * dirVec.x + dirVec.y
-					* dirVec.y);
-			dirVec.x /= dist;
-			dirVec.y /= dist;
+			mCurlDir.x = mCurlPos.x - mDragStartPos.x;
+			mCurlDir.y = mCurlPos.y - mDragStartPos.y;
+			float dist = (float) Math.sqrt(mCurlDir.x * mCurlDir.x + mCurlDir.y
+					* mCurlDir.y);
+			mCurlDir.x /= dist;
+			mCurlDir.y /= dist;
 
 			float pageWidth = mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT)
 					.width();
@@ -448,28 +461,27 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 
 			if (dist >= curlLen) {
 				double translate = (dist - curlLen) / 2;
-				pointerPos.x -= dirVec.x * translate;
-				pointerPos.y -= dirVec.y * translate;
+				mCurlPos.x -= mCurlDir.x * translate;
+				mCurlPos.y -= mCurlDir.y * translate;
 			} else {
 				double angle = Math.PI * Math.sqrt(dist / curlLen);
 				double translate = radius * Math.sin(angle);
-				pointerPos.x += dirVec.x * translate;
-				pointerPos.y += dirVec.y * translate;
+				mCurlPos.x += mCurlDir.x * translate;
+				mCurlPos.y += mCurlDir.y * translate;
 			}
 
-			setCurlPos(pointerPos, dirVec, radius);
+			setCurlPos(mCurlPos, mCurlDir, radius);
 		} else if (mCurlState == CURL_LEFT) {
-			pointerPos.x -= radius;
+			mCurlPos.x -= radius;
 
-			PointF dirVec = new PointF();
-			dirVec.x = pointerPos.x + mDragStartPos.x;
-			dirVec.y = pointerPos.y - mDragStartPos.y;
-			float dist = (float) Math.sqrt(dirVec.x * dirVec.x + dirVec.y
-					* dirVec.y);
-			dirVec.x /= dist;
-			dirVec.y /= dist;
+			mCurlDir.x = mCurlPos.x + mDragStartPos.x;
+			mCurlDir.y = mCurlPos.y - mDragStartPos.y;
+			float dist = (float) Math.sqrt(mCurlDir.x * mCurlDir.x + mCurlDir.y
+					* mCurlDir.y);
+			mCurlDir.x /= dist;
+			mCurlDir.y /= dist;
 
-			setCurlPos(pointerPos, dirVec, radius);
+			setCurlPos(mCurlPos, mCurlDir, radius);
 		}
 	}
 

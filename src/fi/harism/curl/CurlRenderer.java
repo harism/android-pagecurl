@@ -74,16 +74,6 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	}
 
 	/**
-	 * Translates screen coordinates into view coordinates.
-	 */
-	public PointF getPos(float x, float y) {
-		PointF ret = new PointF();
-		ret.x = mViewRect.left + (mViewRect.width() * x / mViewportWidth);
-		ret.y = mViewRect.top - (-mViewRect.height() * y / mViewportHeight);
-		return ret;
-	}
-
-	/**
 	 * Getter for current view mode.
 	 */
 	public int getViewMode() {
@@ -175,6 +165,14 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 			mObserver.onBitmapSizeChanged((mViewportWidth + 1) / 2,
 					mViewportHeight);
 		}
+	}
+
+	/**
+	 * Translates screen coordinates into view coordinates.
+	 */
+	public void translate(PointF pt) {
+		pt.x = mViewRect.left + (mViewRect.width() * pt.x / mViewportWidth);
+		pt.y = mViewRect.top - (-mViewRect.height() * pt.y / mViewportHeight);
 	}
 
 	/**

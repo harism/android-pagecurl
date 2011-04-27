@@ -3,7 +3,6 @@ package fi.harism.curl;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.util.Vector;
 
 import javax.microedition.khronos.opengles.GL10;
 
@@ -53,6 +52,16 @@ public class CurlMesh {
 	private int[] mTextureIds;
 	private Bitmap mBitmap;
 
+	// Let's avoid using 'new' as much as possible.
+	private Array<Vertex> mTempVertices;
+	private Array<Vertex> mIntersections;
+	private Array<Vertex> mOutputVertices;
+	private Array<Vertex> mRotatedVertices;
+	private Array<Double> mScanLines;
+	private Array<ShadowVertex> mTempShadowVertices;
+	private Array<ShadowVertex> mSelfShadowVertices;
+	private Array<ShadowVertex> mDropShadowVertices;
+
 	/**
 	 * Constructor for mesh object.
 	 * 
@@ -64,7 +73,23 @@ public class CurlMesh {
 	 *            Maximum number curl can be divided into.
 	 */
 	public CurlMesh(int maxCurlSplits) {
-		mMaxCurlSplits = maxCurlSplits;
+		// There really is no use for 0 splits.
+		mMaxCurlSplits = maxCurlSplits < 1 ? 1 : maxCurlSplits;
+
+		mScanLines = new Array<Double>(maxCurlSplits + 2);
+		mOutputVertices = new Array<Vertex>(7);
+		mRotatedVertices = new Array<Vertex>(4);
+		mIntersections = new Array<Vertex>(2);
+		mTempVertices = new Array<Vertex>(7 + 4);
+		for (int i = 0; i < 7 + 4; ++i) {
+			mTempVertices.add(new Vertex());
+		}
+		mSelfShadowVertices = new Array<ShadowVertex>((mMaxCurlSplits + 2) * 2);
+		mDropShadowVertices = new Array<ShadowVertex>((mMaxCurlSplits + 2) * 2);
+		mTempShadowVertices = new Array<ShadowVertex>((mMaxCurlSplits + 2) * 2);
+		for (int i = 0; i < (mMaxCurlSplits + 2) * 2; ++i) {
+			mTempShadowVertices.add(new ShadowVertex());
+		}
 
 		for (int i = 0; i < 4; ++i) {
 			mRectangle[i] = new Vertex();
@@ -156,27 +181,29 @@ public class CurlMesh {
 
 		// Initiate rotated 'rectangle' which's is translated to curlPos and
 		// rotated so that curl direction heads to (1,0).
-		Vector<Vertex> rotatedVertices = new Vector<Vertex>();
+		mTempVertices.addAll(mRotatedVertices);
+		mRotatedVertices.clear();
 		for (int i = 0; i < 4; ++i) {
-			Vertex v = new Vertex(mRectangle[i]);
+			Vertex v = mTempVertices.remove(0);
+			v.set(mRectangle[i]);
 			v.translate(-curlPos.x, -curlPos.y);
 			v.rotateZ(-curlAngle);
 
 			int j = 0;
-			for (; j < rotatedVertices.size(); ++j) {
-				Vertex v2 = rotatedVertices.get(j);
+			for (; j < mRotatedVertices.size(); ++j) {
+				Vertex v2 = mRotatedVertices.get(j);
 				if (v.mPosX > v2.mPosX) {
 					break;
 				}
 			}
-			rotatedVertices.add(j, v);
+			mRotatedVertices.add(j, v);
 		}
 		// Reconstruct rectangle by sorting vertices regarding distance from
 		// right most vertex.
 		for (int i = 1; i < 3; ++i) {
-			Vertex v0 = rotatedVertices.get(0);
-			Vertex vi = rotatedVertices.get(i);
-			Vertex vii = rotatedVertices.get(i + 1);
+			Vertex v0 = mRotatedVertices.get(0);
+			Vertex vi = mRotatedVertices.get(i);
+			Vertex vii = mRotatedVertices.get(i + 1);
 			double dist1 = Math
 					.sqrt(((v0.mPosX - vi.mPosX) * (v0.mPosX - vi.mPosX))
 							+ ((v0.mPosY - vi.mPosY) * (v0.mPosY - vi.mPosY)));
@@ -184,79 +211,85 @@ public class CurlMesh {
 					.sqrt(((v0.mPosX - vii.mPosX) * (v0.mPosX - vii.mPosX))
 							+ ((v0.mPosY - vii.mPosY) * (v0.mPosY - vii.mPosY)));
 			if (dist1 > dist2) {
-				rotatedVertices.set(i, vii);
-				rotatedVertices.set(i + 1, vi);
+				mRotatedVertices.set(i, vii);
+				mRotatedVertices.set(i + 1, vi);
 			}
 		}
 		// We want vertex at pos 1 to be right from vertex at pos 2. This is
 		// required for later scan line algorithm to work properly.
-		if (rotatedVertices.get(1).mPosX < rotatedVertices.get(2).mPosX) {
-			Vertex v = rotatedVertices.get(1);
-			rotatedVertices.set(1, rotatedVertices.get(2));
-			rotatedVertices.set(2, v);
+		if (mRotatedVertices.get(1).mPosX < mRotatedVertices.get(2).mPosX) {
+			Vertex v = mRotatedVertices.get(1);
+			mRotatedVertices.set(1, mRotatedVertices.get(2));
+			mRotatedVertices.set(2, v);
 		}
 
 		mVerticesCountFront = mVerticesCountBack = 0;
-		Vector<ShadowVertex> dropShadowVertices = new Vector<ShadowVertex>();
-		Vector<ShadowVertex> selfShadowVertices = new Vector<ShadowVertex>();
+		mTempShadowVertices.addAll(mDropShadowVertices);
+		mTempShadowVertices.addAll(mSelfShadowVertices);
+		mDropShadowVertices.clear();
+		mSelfShadowVertices.clear();
 
 		// Our rectangle lines/vertex indices.
-		int lines[] = { 0, 1, 0, 2, 3, 1, 3, 2 };
+		final int lines[] = { 0, 1, 0, 2, 3, 1, 3, 2 };
 		// Length of 'curl' curve.
 		double curlLength = Math.PI * radius;
 		// Calculate scan lines.
-		Vector<Double> scanLines = new Vector<Double>();
+		mScanLines.clear();
 		if (mMaxCurlSplits > 0) {
-			scanLines.add((double) 0);
+			mScanLines.add((double) 0);
 		}
 		for (int i = 1; i < mMaxCurlSplits; ++i) {
-			scanLines.add((-curlLength * i) / (mMaxCurlSplits - 1));
+			mScanLines.add((-curlLength * i) / (mMaxCurlSplits - 1));
 		}
-		scanLines.add(rotatedVertices.get(3).mPosX - 1);
+		mScanLines.add(mRotatedVertices.get(3).mPosX - 1);
 
 		// Start from right most vertex.
-		double scanXmax = rotatedVertices.get(0).mPosX + 1;
-		Vector<Vertex> out = new Vector<Vertex>();
-		for (int i = 0; i < scanLines.size(); ++i) {
-			double scanXmin = scanLines.get(i);
+		double scanXmax = mRotatedVertices.get(0).mPosX + 1;
+		for (int i = 0; i < mScanLines.size(); ++i) {
+			double scanXmin = mScanLines.get(i);
 			// First iterate vertices within scan area.
-			for (int j = 0; j < rotatedVertices.size(); ++j) {
-				Vertex v = rotatedVertices.get(j);
+			for (int j = 0; j < mRotatedVertices.size(); ++j) {
+				Vertex v = mRotatedVertices.get(j);
 				if (v.mPosX >= scanXmin && v.mPosX <= scanXmax) {
-					Vertex n = new Vertex(v);
-					Vector<Vertex> intersections = getIntersections(
-							rotatedVertices, lines, n.mPosX);
+					Vertex n = mTempVertices.remove(0);
+					n.set(v);
+					Array<Vertex> intersections = getIntersections(
+							mRotatedVertices, lines, n.mPosX);
 					if (intersections.size() == 1
 							&& intersections.get(0).mPosY > v.mPosY) {
-						out.addAll(intersections);
-						out.add(n);
+						mOutputVertices.addAll(intersections);
+						mOutputVertices.add(n);
 					} else if (intersections.size() <= 1) {
-						out.add(n);
-						out.addAll(intersections);
+						mOutputVertices.add(n);
+						mOutputVertices.addAll(intersections);
 					} else {
 						Log.d("CurlMesh", "Intersections size > 1");
+						mTempVertices.add(n);
+						mTempVertices.addAll(intersections);
 					}
 				}
 			}
 			// Search for line intersections.
-			Vector<Vertex> intersections = getIntersections(rotatedVertices,
+			Array<Vertex> intersections = getIntersections(mRotatedVertices,
 					lines, scanXmin);
 			if (intersections.size() == 2) {
 				Vertex v1 = intersections.get(0);
 				Vertex v2 = intersections.get(1);
 				if (v1.mPosY < v2.mPosY) {
-					out.add(v2);
-					out.add(v1);
+					mOutputVertices.add(v2);
+					mOutputVertices.add(v1);
 				} else {
-					out.addAll(intersections);
+					mOutputVertices.addAll(intersections);
 				}
 			} else if (intersections.size() != 0) {
 				Log.d("CurlMesh", "Intersections size != 0 or 2");
+				mTempVertices.addAll(intersections);
 			}
 
 			// Add vertices to out buffers.
-			while (out.size() > 0) {
-				Vertex v = out.remove(0);
+			while (mOutputVertices.size() > 0) {
+				Vertex v = mOutputVertices.remove(0);
+				mTempVertices.add(v);
 
 				// Untouched vertices.
 				if (i == 0) {
@@ -264,7 +297,7 @@ public class CurlMesh {
 					mVerticesCountFront++;
 				}
 				// 'Completely' rotated vertices.
-				else if (i == scanLines.size() - 1 || curlLength == 0) {
+				else if (i == mScanLines.size() - 1 || curlLength == 0) {
 					v.mPosX = -(curlLength + v.mPosX);
 					v.mPosZ = 2 * radius;
 
@@ -299,25 +332,25 @@ public class CurlMesh {
 				if (v.mPosZ > 0 && v.mPosZ <= radius) {
 					// TODO: There is some overlapping in some cases, not all
 					// vertices should be added to shadow.
-					ShadowVertex sv = new ShadowVertex();
+					ShadowVertex sv = mTempShadowVertices.remove(0);
 					sv.mPosX = v.mPosX;
 					sv.mPosY = v.mPosY;
 					sv.mPenumbraX = (v.mPosZ / 4) * -directionVec.x;
 					sv.mPenumbraY = (v.mPosZ / 4) * -directionVec.y;
-					int idx = (dropShadowVertices.size() + 1) / 2;
-					dropShadowVertices.add(idx, sv);
+					int idx = (mDropShadowVertices.size() + 1) / 2;
+					mDropShadowVertices.add(idx, sv);
 				}
 				// Self shadow is cast partly over mesh.
 				if (v.mPosZ > radius) {
 					// TODO: Shadow penumbra direction is not good, shouldn't be
 					// calculated using only directionVec.
-					ShadowVertex sv = new ShadowVertex();
+					ShadowVertex sv = mTempShadowVertices.remove(0);
 					sv.mPosX = v.mPosX;
 					sv.mPosY = v.mPosY;
 					sv.mPenumbraX = ((v.mPosZ - radius) / 4) * directionVec.x;
 					sv.mPenumbraY = ((v.mPosZ - radius) / 4) * directionVec.y;
-					int idx = (selfShadowVertices.size() + 1) / 2;
-					selfShadowVertices.add(idx, sv);
+					int idx = (mSelfShadowVertices.size() + 1) / 2;
+					mSelfShadowVertices.add(idx, sv);
 				}
 			}
 
@@ -332,8 +365,8 @@ public class CurlMesh {
 		mShadowColors.position(0);
 		mShadowVertices.position(0);
 		mDropShadowCount = 0;
-		for (int i = 0; i < dropShadowVertices.size(); ++i) {
-			ShadowVertex sv = dropShadowVertices.get(i);
+		for (int i = 0; i < mDropShadowVertices.size(); ++i) {
+			ShadowVertex sv = mDropShadowVertices.get(i);
 			mShadowVertices.put((float) sv.mPosX);
 			mShadowVertices.put((float) sv.mPosY);
 			mShadowVertices.put((float) (sv.mPosX + sv.mPenumbraX));
@@ -343,8 +376,8 @@ public class CurlMesh {
 			mDropShadowCount += 2;
 		}
 		mSelfShadowCount = 0;
-		for (int i = 0; i < selfShadowVertices.size(); ++i) {
-			ShadowVertex sv = selfShadowVertices.get(i);
+		for (int i = 0; i < mSelfShadowVertices.size(); ++i) {
+			ShadowVertex sv = mSelfShadowVertices.get(i);
 			mShadowVertices.put((float) sv.mPosX);
 			mShadowVertices.put((float) sv.mPosY);
 			mShadowVertices.put((float) (sv.mPosX + sv.mPenumbraX));
@@ -532,24 +565,25 @@ public class CurlMesh {
 	/**
 	 * Calculates intersections for given scan line.
 	 */
-	private Vector<Vertex> getIntersections(Vector<Vertex> vertices,
+	private Array<Vertex> getIntersections(Array<Vertex> vertices,
 			int[] lineIndices, double scanX) {
-		Vector<Vertex> ret = new Vector<Vertex>();
+		mIntersections.clear();
 		for (int j = 0; j < lineIndices.length; j += 2) {
 			Vertex v1 = vertices.get(lineIndices[j]);
 			Vertex v2 = vertices.get(lineIndices[j + 1]);
 			if ((v1.mPosX > scanX && v2.mPosX < scanX)
 					|| (v2.mPosX > scanX && v1.mPosX < scanX)) {
-				Vertex n = new Vertex(v2);
+				Vertex n = mTempVertices.remove(0);
+				n.set(v2);
 				n.mPosX = scanX;
 				double c = (scanX - v2.mPosX) / (v1.mPosX - v2.mPosX);
 				n.mPosY += (v1.mPosY - v2.mPosY) * c;
 				n.mTexX += (v1.mTexX - v2.mTexX) * c;
 				n.mTexY += (v1.mTexY - v2.mTexY) * c;
-				ret.add(n);
+				mIntersections.add(n);
 			}
 		}
-		return ret;
+		return mIntersections;
 	}
 
 	/**
@@ -567,6 +601,84 @@ public class CurlMesh {
 	}
 
 	/**
+	 * Simple fixed size array implementation.
+	 */
+	private class Array<T> {
+		private Object[] mArray;
+		private int mSize;
+		private int mCapacity;
+		
+		public Array(int capacity) {
+			mCapacity = capacity;
+			mArray = new Object[capacity];
+		}
+		
+		public void add(int index, T item) {
+			if (index < 0 || index > mSize || mSize >= mCapacity) {
+				throw new IndexOutOfBoundsException();
+			}
+			for (int i=mSize; i>index; --i) {
+				mArray[i] = mArray[i-1];
+			}
+			mArray[index] = item;
+			++mSize;
+		}
+		
+		public void add(T item) {
+			if (mSize >= mCapacity) {
+				throw new IndexOutOfBoundsException();
+			}
+			mArray[mSize++] = item;
+		}
+		
+		public void addAll(Array<T> array) {
+			if (mSize + array.size() > mCapacity) {
+				throw new IndexOutOfBoundsException();
+			}
+			for (int i=0; i<array.size(); ++i) {
+				mArray[mSize++] = array.get(i);
+			}
+		}
+		
+		public void clear() {
+			mSize = 0;
+		}
+		
+		@SuppressWarnings("unchecked")
+		public T get(int index) {
+			if (index < 0 || index >= mSize) {
+				throw new IndexOutOfBoundsException();
+			}
+			return (T)mArray[index];
+		}
+		
+		@SuppressWarnings("unchecked")
+		public T remove(int index) {
+			if (index < 0 || index >= mSize) {
+				throw new IndexOutOfBoundsException();
+			}
+			T item = (T)mArray[index];
+			for (int i=index; i<mSize-1; ++i) {
+				mArray[i] = mArray[i+1];
+			}
+			--mSize;
+			return item;
+		}
+		
+		public void set(int index, T item) {
+			if (index < 0 || index >= mSize) {
+				throw new IndexOutOfBoundsException();
+			}
+			mArray[index] = item;
+		}
+		
+		public int size() {
+			return mSize;
+		}
+		
+	}
+
+	/**
 	 * Holder for shadow vertex information.
 	 */
 	private class ShadowVertex {
@@ -575,7 +687,7 @@ public class CurlMesh {
 		public double mPenumbraX;
 		public double mPenumbraY;
 	}
-
+	
 	/**
 	 * Holder for vertex information.
 	 */
@@ -593,16 +705,6 @@ public class CurlMesh {
 			mColor = mAlpha = 1;
 		}
 
-		public Vertex(Vertex vertex) {
-			mPosX = vertex.mPosX;
-			mPosY = vertex.mPosY;
-			mPosZ = vertex.mPosZ;
-			mTexX = vertex.mTexX;
-			mTexY = vertex.mTexY;
-			mColor = vertex.mColor;
-			mAlpha = vertex.mAlpha;
-		}
-
 		public void rotateZ(double theta) {
 			double cos = Math.cos(theta);
 			double sin = Math.sin(theta);
@@ -610,6 +712,16 @@ public class CurlMesh {
 			double y = mPosX * -sin + mPosY * cos;
 			mPosX = x;
 			mPosY = y;
+		}
+
+		public void set(Vertex vertex) {
+			mPosX = vertex.mPosX;
+			mPosY = vertex.mPosY;
+			mPosZ = vertex.mPosZ;
+			mTexX = vertex.mTexX;
+			mTexY = vertex.mTexY;
+			mColor = vertex.mColor;
+			mAlpha = vertex.mAlpha;
 		}
 
 		public void translate(double dx, double dy) {
