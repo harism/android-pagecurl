@@ -29,8 +29,9 @@ It isn't very difficult to see what happens here once you take a paper and simpl
 curl it to some direction. If you fold paper completely, cylinder, curling happens around,
 radius becomes zero, making it more of a 2D effect. And likewise folding the paper so
 that curl radius is constant most of the characteristics remain - most importantly there
-is a line - at center of this 'cylinder' - which doesn't change depending on radius. Using such approach makes
-handling curl a lot easier compared to using a cone as solid curling is done around.<br/>
+is a line - at center of this 'cylinder' - which has constant slope not dependent on radius
+its distance varies only. Using such approach makes handling curl a lot easier compared to
+using a cone as solid curling is done around.<br/>
 <br/>
 Curl/cylinder is defined with three parameters, position, which is any point on a line collinear to
 curl. Direction vector which tells direction curl 'opens to'. And curl/cylinder
