@@ -1,8 +1,10 @@
 Introduction
 ============
 Project for implementing 'page curl' effect on Android + OpenGL ES 1.0 (possibly 1.1/2.0 too if there's clear advantage in using them).
-Feel free to use everything found here on what ever purpose you can imagine of. Let it be as-is implementation
-or - maybe more preferably - as an example for implementing your own effect.
+Feel free to use everything found here on what ever purpose you can imagine of. With the exception of
+images I'm using as example they are randomly selected from Google Images. And application icon is borrowed
+from [deviantART](http://browse.deviantart.com/customization/icons/dock/#/dz0w8n). Besides these
+exceptions, let it be as-is implementation or - maybe more preferably - as an example for implementing your own effect.
 
 ToDo
 ====
@@ -29,9 +31,9 @@ It isn't very difficult to see what happens here once you take a paper and simpl
 curl it to some direction. If you fold paper completely, cylinder, curling happens around,
 radius becomes zero, making it more of a 2D effect. And likewise folding the paper so
 that curl radius is constant most of the characteristics remain - most importantly there
-is a line - at center of this 'cylinder' - which has constant slope not dependent on radius
-its distance varies only. Using such approach makes handling curl a lot easier compared to
-using a cone as solid curling is done around.<br/>
+is a line - at center of this 'cylinder' - which has constant slope not dependent on radius.
+Its distance varies only. Using such approach makes handling curl position based on touch events
+a lot easier compared to using a cone as solid curling is done around.<br/>
 <br/>
 Curl/cylinder is defined with three parameters, position, which is any point on a line collinear to
 curl. Direction vector which tells direction curl 'opens to'. And curl/cylinder
