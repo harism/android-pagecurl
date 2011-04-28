@@ -42,7 +42,10 @@ at least 0 are not affected. Vertices which have x -coordinate between (-PI*radi
 are within curl, and if x -coordinate is less than -PI*radius they are completely rotated.
 And scan line algorithm for splitting lines within curled area is more simple as
 scan lines are always vertical. Not to forget curling happens around y -axis (0, radius) as
-cylinder center is positioned at x=0. Once again, using a piece of paper works much more as a proper
-explanation than words, mine at least, can tell.<br/>
+cylinder center is positioned at x=0. And after we translate these vertices back to
+original position we have a curl which direction heads to direction vector and it's center
+is located at given curl position.<br/>
 <br/>
-Happy curling :)
+But, once again, using a piece of paper works much more as a proper
+explanation than words, mine at least, can tell. And maybe gives some idea how
+to make better/more realistic implementation. Happy page flipping  :)
