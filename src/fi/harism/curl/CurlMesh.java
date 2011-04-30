@@ -29,11 +29,11 @@ public class CurlMesh {
 	private static final boolean DRAW_SHADOW = true;
 
 	// Colors for shadow.
-	private static final float[] SHADOW_INNER_COLOR = { 0f, 0f, 0f, .7f };
-	private static final float[] SHADOW_OUTER_COLOR = { 0f, 0f, 0f, 0f };
+	private static final float[] SHADOW_INNER_COLOR = { 0f, 0f, 0f, .5f };
+	private static final float[] SHADOW_OUTER_COLOR = { 0f, 0f, 0f, .0f };
 
 	// Alpha values for front and back facing texture.
-	private static final double BACKFACE_ALPHA = .4f;
+	private static final double BACKFACE_ALPHA = .1f;
 	private static final double FRONTFACE_ALPHA = 1f;
 	private boolean mSwapAlpha = false;
 
@@ -212,32 +212,11 @@ public class CurlMesh {
 				if (v.mPosX > v2.mPosX) {
 					break;
 				}
+				if (v.mPosX == v2.mPosX && v.mPosY > v2.mPosY) {
+					break;
+				}
 			}
 			mRotatedVertices.add(j, v);
-		}
-		// Reconstruct rectangle by sorting vertices regarding distance from
-		// right most vertex.
-		for (int i = 1; i < 3; ++i) {
-			Vertex v0 = mRotatedVertices.get(0);
-			Vertex vi = mRotatedVertices.get(i);
-			Vertex vii = mRotatedVertices.get(i + 1);
-			double dist1 = Math
-					.sqrt(((v0.mPosX - vi.mPosX) * (v0.mPosX - vi.mPosX))
-							+ ((v0.mPosY - vi.mPosY) * (v0.mPosY - vi.mPosY)));
-			double dist2 = Math
-					.sqrt(((v0.mPosX - vii.mPosX) * (v0.mPosX - vii.mPosX))
-							+ ((v0.mPosY - vii.mPosY) * (v0.mPosY - vii.mPosY)));
-			if (dist1 > dist2) {
-				mRotatedVertices.set(i, vii);
-				mRotatedVertices.set(i + 1, vi);
-			}
-		}
-		// We want vertex at pos 1 to be right from vertex at pos 2. This is
-		// required for later scan line algorithm to work properly.
-		if (mRotatedVertices.get(1).mPosX < mRotatedVertices.get(2).mPosX) {
-			Vertex v = mRotatedVertices.get(1);
-			mRotatedVertices.set(1, mRotatedVertices.get(2));
-			mRotatedVertices.set(2, v);
 		}
 
 		mVerticesCountFront = mVerticesCountBack = 0;
@@ -355,8 +334,8 @@ public class CurlMesh {
 					ShadowVertex sv = mTempShadowVertices.remove(0);
 					sv.mPosX = v.mPosX;
 					sv.mPosY = v.mPosY;
-					sv.mPenumbraX = (v.mPosZ / 4) * -directionVec.x;
-					sv.mPenumbraY = (v.mPosZ / 4) * -directionVec.y;
+					sv.mPenumbraX = (v.mPosZ / 2) * -directionVec.x;
+					sv.mPenumbraY = (v.mPosZ / 2) * -directionVec.y;
 					int idx = (mDropShadowVertices.size() + 1) / 2;
 					mDropShadowVertices.add(idx, sv);
 				}
@@ -367,8 +346,8 @@ public class CurlMesh {
 					ShadowVertex sv = mTempShadowVertices.remove(0);
 					sv.mPosX = v.mPosX;
 					sv.mPosY = v.mPosY;
-					sv.mPenumbraX = ((v.mPosZ - radius) / 4) * directionVec.x;
-					sv.mPenumbraY = ((v.mPosZ - radius) / 4) * directionVec.y;
+					sv.mPenumbraX = ((v.mPosZ - radius) / 2) * directionVec.x;
+					sv.mPenumbraY = ((v.mPosZ - radius) / 2) * directionVec.y;
 					int idx = (mSelfShadowVertices.size() + 1) / 2;
 					mSelfShadowVertices.add(idx, sv);
 				}
@@ -448,13 +427,24 @@ public class CurlMesh {
 		// Some 'global' settings.
 		gl.glEnable(GL10.GL_BLEND);
 		gl.glEnableClientState(GL10.GL_VERTEX_ARRAY);
-		gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mVertices);
+
+		// TODO: Drop shadow drawing is done temporarily here to hide some
+		// problems with its calculation.
+		if (DRAW_SHADOW) {
+			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
+			gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
+			gl.glColorPointer(4, GL10.GL_FLOAT, 0, mShadowColors);
+			gl.glVertexPointer(2, GL10.GL_FLOAT, 0, mShadowVertices);
+			gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, mDropShadowCount);
+			gl.glDisableClientState(GL10.GL_COLOR_ARRAY);
+		}
 
 		// Enable texture coordinates.
 		if (DRAW_TEXTURE) {
 			gl.glEnableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
 			gl.glTexCoordPointer(2, GL10.GL_FLOAT, 0, mTexCoords);
 		}
+		gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mVertices);
 
 		// Enable color array.
 		gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
@@ -511,7 +501,6 @@ public class CurlMesh {
 			gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
 			gl.glColorPointer(4, GL10.GL_FLOAT, 0, mShadowColors);
 			gl.glVertexPointer(2, GL10.GL_FLOAT, 0, mShadowVertices);
-			gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, mDropShadowCount);
 			gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, mDropShadowCount,
 					mSelfShadowCount);
 			gl.glDisableClientState(GL10.GL_COLOR_ARRAY);
