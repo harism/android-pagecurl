@@ -86,6 +86,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 					Color.green(mBackgroundColor) / 255f,
 					Color.blue(mBackgroundColor) / 255f,
 					Color.alpha(mBackgroundColor) / 255f);
+			mBackgroundColorChanged = false;
 		}
 
 		gl.glClear(GL10.GL_COLOR_BUFFER_BIT); // | GL10.GL_DEPTH_BUFFER_BIT);
@@ -129,6 +130,9 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		setBackgroundColor(0xFF303030);
 		gl.glShadeModel(GL10.GL_SMOOTH);
 		gl.glHint(GL10.GL_PERSPECTIVE_CORRECTION_HINT, GL10.GL_NICEST);
+		gl.glHint(GL10.GL_LINE_SMOOTH_HINT, GL10.GL_NICEST);
+		gl.glHint(GL10.GL_POLYGON_SMOOTH_HINT, GL10.GL_NICEST);
+		gl.glEnable(GL10.GL_LINE_SMOOTH);
 		gl.glDisable(GL10.GL_DEPTH_TEST);
 		gl.glDisable(GL10.GL_CULL_FACE);
 	}
