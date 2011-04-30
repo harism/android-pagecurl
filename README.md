@@ -23,10 +23,10 @@ We really do not want to draw polygons separately if they lie next to each other
 It's more appropriate to have more vertices used for drawing curled area instead.
 On negative side lots of code complexity comes from the need for creating a triangle strip for rendering.
 Using a solid grid such problems do not occur at all.<br/>
-<br/>
-* [http://nomtek.com/tips-for-developers/page-flip-2d/]
-* [http://nomtek.com/tips-for-developers/page-flip-3d/]
-<br/>
+
+* Page Flip 2D [http://nomtek.com/tips-for-developers/page-flip-2d/]
+* Page Flip 3D [http://nomtek.com/tips-for-developers/page-flip-3d/]
+
 It isn't very difficult to see what happens here once you take a paper and simply
 curl it to some direction. If you fold paper completely, cylinder, curling happens around,
 radius becomes zero, making it more of a 2D effect. And likewise folding the paper so
@@ -63,6 +63,7 @@ Happy page flipping  :)<br/>
 Sources of inspiration
 ======================
 Some YouTube links to implementations I've found interesting for a reason or another.
-* [http://www.youtube.com/watch?v=Yg04wfnDpiQ]
-* [http://www.youtube.com/watch?v=EVHksX0GdIQ]
-* [http://www.youtube.com/watch?v=ynu4Ov-29Po]
+
+* Tiffany [http://www.youtube.com/watch?v=Yg04wfnDpiQ]
+* Huone Inc [http://www.youtube.com/watch?v=EVHksX0GdIQ]
+* CodeFlakes [http://www.youtube.com/watch?v=ynu4Ov-29Po]
