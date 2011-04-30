@@ -61,8 +61,14 @@ Happy page flipping  :)<br/>
 
 Sources of inspiration
 ======================
-Some YouTube links to implementations I've found interesting for a reason or another.
+Some YouTube links to page curl/flip implementations I've found interesting for a reason or another.
 
 * Tiffany [http://www.youtube.com/watch?v=Yg04wfnDpiQ]
 * Huone Inc [http://www.youtube.com/watch?v=EVHksX0GdIQ]
 * CodeFlakes [http://www.youtube.com/watch?v=ynu4Ov-29Po]
+
+Not to forget some of my real time rendering heros. One day I'm beating them all, one day.
+
+* Rgba&Tbc - Elevated [http://www.youtube.com/watch?v=_YWMGuh15nE]
+* Andromeda&Orb - Stargazer [http://www.youtube.com/watch?v=5u1cqYLNbJI]
+* Cncd&Flt - Numb Res [http://www.youtube.com/watch?v=LTOC_ajkRkU]
