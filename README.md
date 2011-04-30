@@ -24,8 +24,8 @@ It's more appropriate to have more vertices used for drawing curled area instead
 On negative side lots of code complexity comes from the need for creating a triangle strip for rendering.
 Using a solid grid such problems do not occur at all.<br/>
 <br/>
-[http://nomtek.com/tips-for-developers/page-flip-2d/]<br/>
-[http://nomtek.com/tips-for-developers/page-flip-3d/]<br/>
+* [http://nomtek.com/tips-for-developers/page-flip-2d/]
+* [http://nomtek.com/tips-for-developers/page-flip-3d/]
 <br/>
 It isn't very difficult to see what happens here once you take a paper and simply
 curl it to some direction. If you fold paper completely, cylinder, curling happens around,
@@ -59,3 +59,10 @@ But, once again, using a piece of paper and doing some experiments by yourself w
 much more as a proper explanation than words, mine at least, can tell.
 And maybe gives some idea how to make better/more realistic implementation.
 Happy page flipping  :)<br/>
+
+Sources of inspiration
+======================
+Some YouTube links to implementations I've found interesting for a reason or another.
+* [http://www.youtube.com/watch?v=Yg04wfnDpiQ]
+* [http://www.youtube.com/watch?v=EVHksX0GdIQ]
+* [http://www.youtube.com/watch?v=ynu4Ov-29Po]
