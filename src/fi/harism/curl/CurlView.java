@@ -132,12 +132,11 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			requestRender();
 		} else {
 			mPointerPos.set(mAnimationSource);
-			mPointerPos.x += (mAnimationTarget.x - mAnimationSource.x)
-					* (currentTime - mAnimationStartTime)
-					/ mAnimationDurationTime;
-			mPointerPos.y += (mAnimationTarget.y - mAnimationSource.y)
-					* (currentTime - mAnimationStartTime)
-					/ mAnimationDurationTime;
+			float t = (float) Math
+					.sqrt((double) (currentTime - mAnimationStartTime)
+							/ mAnimationDurationTime);
+			mPointerPos.x += (mAnimationTarget.x - mAnimationSource.x) * t;
+			mPointerPos.y += (mAnimationTarget.y - mAnimationSource.y) * t;
 			updateCurlPos(mPointerPos);
 		}
 	}
@@ -280,8 +279,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 				if (curlDir.y < 0 && leftY < pageRect.top) {
 					curlDir.x = curlPos.y - pageRect.top;
 					curlDir.y = pageRect.left - curlPos.x;
-				}
-				else if (curlDir.y > 0 && leftY > pageRect.bottom) {
+				} else if (curlDir.y > 0 && leftY > pageRect.bottom) {
 					curlDir.x = pageRect.bottom - curlPos.y;
 					curlDir.y = curlPos.x - pageRect.left;
 				}
@@ -297,14 +295,13 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 				if (curlDir.y < 0 && rightY < pageRect.top) {
 					curlDir.x = pageRect.top - curlPos.y;
 					curlDir.y = curlPos.x - pageRect.right;
-				}
-				else if (curlDir.y > 0 && rightY > pageRect.bottom) {
+				} else if (curlDir.y > 0 && rightY > pageRect.bottom) {
 					curlDir.x = curlPos.y - pageRect.bottom;
 					curlDir.y = pageRect.right - curlPos.x;
 				}
 			}
 		}
-		
+
 		// Finally normalize direction vector and do rendering.
 		double dist = Math.sqrt(curlDir.x * curlDir.x + curlDir.y * curlDir.y);
 		if (dist != 0) {
@@ -314,7 +311,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		} else {
 			mPageCurl.reset();
 		}
-		
+
 		requestRender();
 	}
 
@@ -488,12 +485,12 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			if (dist >= curlLen) {
 				double translate = (dist - curlLen) / 2;
 				mCurlPos.x -= mCurlDir.x * translate / dist;
-				mCurlPos.y -= mCurlDir.y * translate /dist;
+				mCurlPos.y -= mCurlDir.y * translate / dist;
 			} else {
 				double angle = Math.PI * Math.sqrt(dist / curlLen);
 				double translate = radius * Math.sin(angle);
 				mCurlPos.x += mCurlDir.x * translate / dist;
-				mCurlPos.y += mCurlDir.y * translate /dist;
+				mCurlPos.y += mCurlDir.y * translate / dist;
 			}
 
 			setCurlPos(mCurlPos, mCurlDir, radius);
