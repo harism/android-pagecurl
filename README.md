@@ -49,7 +49,7 @@ original position we have a curl which direction heads to direction vector and i
 is located at given curl position.<br/>
 <br/>
 1. At first there is a piece of paper represented by 4 vertices at its corners.<br/>
-![http://github.com/downloads/harism/android_page_curl/paper1.png]<br/>
+![paper1.png]<br/>
 2. And let's say we want to curl it approximately like this.<br/>
 ![http://github.com/downloads/harism/android_page_curl/paper2.png]<br/>
 3. Which results in approximately following vertices.<br/>
