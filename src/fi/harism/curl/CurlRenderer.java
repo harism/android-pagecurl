@@ -12,8 +12,7 @@ import android.opengl.GLSurfaceView;
 import android.opengl.GLU;
 
 /**
- * Actual renderer class. Multiple bitmaps should be provided to get proper
- * results.
+ * Actual renderer class.
  * 
  * @author harism
  */
@@ -40,8 +39,8 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 
 	private CurlRenderer.Observer mObserver;
 
-	private RectF mCurlRectLeft;
-	private RectF mCurlRectRight;
+	private RectF mPageRectLeft;
+	private RectF mPageRectRight;
 
 	/**
 	 * Basic constructor.
@@ -49,8 +48,8 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	public CurlRenderer(CurlRenderer.Observer observer) {
 		mObserver = observer;
 		mCurlMeshes = new Vector<CurlMesh>();
-		mCurlRectLeft = new RectF();
-		mCurlRectRight = new RectF();
+		mPageRectLeft = new RectF();
+		mPageRectRight = new RectF();
 	}
 
 	/**
@@ -66,9 +65,9 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	 */
 	public RectF getPageRect(int page) {
 		if (page == PAGE_LEFT) {
-			return mCurlRectLeft;
+			return mPageRectLeft;
 		} else if (page == PAGE_RIGHT) {
-			return mCurlRectRight;
+			return mPageRectRight;
 		}
 		return null;
 	}
@@ -110,12 +109,16 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		mViewRect.bottom = -1.0f;
 		mViewRect.left = -ratio;
 		mViewRect.right = ratio;
-		setViewMode(mViewMode);
 
 		gl.glMatrixMode(GL10.GL_PROJECTION);
 		gl.glLoadIdentity();
 		GLU.gluOrtho2D(gl, mViewRect.left, mViewRect.right, mViewRect.bottom,
 				mViewRect.top);
+
+		// TODO: Add more proper margin calculation
+		// But for now this hack has to do.
+		// mViewRect.inset(.1f, -.1f);
+		setViewMode(mViewMode);
 
 		gl.glMatrixMode(GL10.GL_MODELVIEW);
 		gl.glLoadIdentity();
@@ -152,16 +155,16 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	public synchronized void setViewMode(int viewmode) {
 		if (viewmode == SHOW_ONE_PAGE) {
 			mViewMode = viewmode;
-			mCurlRectRight.set(mViewRect);
-			mCurlRectLeft.set(mCurlRectRight);
-			mCurlRectLeft.offset(-mCurlRectRight.width(), 0);
+			mPageRectRight.set(mViewRect);
+			mPageRectLeft.set(mPageRectRight);
+			mPageRectLeft.offset(-mPageRectRight.width(), 0);
 			mObserver.onBitmapSizeChanged(mViewportWidth, mViewportHeight);
 		} else if (viewmode == SHOW_TWO_PAGES) {
 			mViewMode = viewmode;
-			mCurlRectLeft.set(mViewRect);
-			mCurlRectLeft.right = 0;
-			mCurlRectRight.set(mViewRect);
-			mCurlRectRight.left = 0;
+			mPageRectLeft.set(mViewRect);
+			mPageRectLeft.right = 0;
+			mPageRectRight.set(mViewRect);
+			mPageRectRight.left = 0;
 			mObserver.onBitmapSizeChanged((mViewportWidth + 1) / 2,
 					mViewportHeight);
 		}
@@ -179,8 +182,16 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	 * Observer for waiting render engine/state updates.
 	 */
 	public interface Observer {
+		/**
+		 * Called once page size is changed. Width and height tell the page size
+		 * in pixels making it possible to update textures accordingly.
+		 */
 		public void onBitmapSizeChanged(int width, int height);
 
+		/**
+		 * Call back method from onDrawFrame called after rendering frame is
+		 * done. This is intended to be used for animation purposes.
+		 */
 		public void onRenderDone();
 	}
 }
