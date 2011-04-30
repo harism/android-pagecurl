@@ -212,8 +212,6 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 					} else {
 						mAnimationTarget.x = mRenderer
 								.getPageRect(CurlRenderer.PAGE_RIGHT).left;
-						mAnimationSource.x -= 0.3f;
-						mAnimationTarget.x -= 0.3f;
 					}
 					mAnimationTargetEvent = SET_CURL_TO_LEFT;
 				}
@@ -444,12 +442,18 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 
 		if (mCurlState == CURL_RIGHT
 				|| (mCurlState == CURL_LEFT && mRenderer.getViewMode() == CurlRenderer.SHOW_TWO_PAGES)) {
+
 			mCurlDir.x = mCurlPos.x - mDragStartPos.x;
 			mCurlDir.y = mCurlPos.y - mDragStartPos.y;
 			float dist = (float) Math.sqrt(mCurlDir.x * mCurlDir.x + mCurlDir.y
 					* mCurlDir.y);
-			mCurlDir.x /= dist;
-			mCurlDir.y /= dist;
+
+			if (dist == 0) {
+				return;
+			} else {
+				mCurlDir.x /= dist;
+				mCurlDir.y /= dist;
+			}
 
 			float pageWidth = mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT)
 					.width();
@@ -472,15 +476,22 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 
 			setCurlPos(mCurlPos, mCurlDir, radius);
 		} else if (mCurlState == CURL_LEFT) {
-			mCurlPos.x -= radius;
 
+			float pageLeftX = mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT).left;
+			radius = Math.min(mCurlPos.x - pageLeftX, radius);
+
+			mCurlPos.x -= radius;
 			mCurlDir.x = mCurlPos.x + mDragStartPos.x;
 			mCurlDir.y = mCurlPos.y - mDragStartPos.y;
 			float dist = (float) Math.sqrt(mCurlDir.x * mCurlDir.x + mCurlDir.y
 					* mCurlDir.y);
-			mCurlDir.x /= dist;
-			mCurlDir.y /= dist;
 
+			if (dist == 0) {
+				return;
+			} else {
+				mCurlDir.x /= dist;
+				mCurlDir.y /= dist;
+			}
 			setCurlPos(mCurlPos, mCurlDir, radius);
 		}
 	}
