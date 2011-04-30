@@ -305,11 +305,14 @@ public class CurlMesh {
 				}
 				// Vertex lies within 'curl'.
 				else {
-					double rotY = Math.PI / 2;
-					rotY -= Math.PI * (v.mPosX / curlLength);
-					v.mPosX = radius * Math.cos(rotY);
-					v.mPosZ = radius + (radius * -Math.sin(rotY));
-					v.mColor = Math.sqrt(Math.cos(rotY) + 1);
+					// Even though it's not obvious from the if-else clause, here
+					// v.mPosX is between [-curlLength, 0]. And we can do
+					// calculations around a half cylinder.
+					double rotY = Math.PI * (v.mPosX / curlLength);
+					v.mPosX = radius * Math.sin(rotY);
+					v.mPosZ = radius - (radius * Math.cos(rotY));
+					// Map color multiplier to [.1f, 1f] range.
+					v.mColor = .1f + .9f * Math.sqrt(Math.sin(rotY) + 1);
 
 					if (v.mPosZ >= radius) {
 						v.mAlpha = mSwapAlpha ? FRONTFACE_ALPHA
