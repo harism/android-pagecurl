@@ -33,7 +33,7 @@ public class CurlMesh {
 	private static final float[] SHADOW_OUTER_COLOR = { 0f, 0f, 0f, .0f };
 
 	// Alpha values for front and back facing texture.
-	private static final double BACKFACE_ALPHA = .1f;
+	private static final double BACKFACE_ALPHA = .2f;
 	private static final double FRONTFACE_ALPHA = 1f;
 	private boolean mSwapAlpha = false;
 
