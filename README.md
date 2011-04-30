@@ -8,10 +8,9 @@ exceptions, let it be as-is implementation or - maybe more preferably - as an ex
 
 ToDo
 ====
-* Fix shadows as now there's overlapping with surface in some situations.
-* Adjust fake shadow calculation.
-* Add some details to make it more book like.
-* Split implementation into two separate Eclipse projects. A library and an example application using it.
+* Fix drop shadow calculation as now there's overlapping with page surface in some situations. Additionally in some cases drop shadow polygons overlap each other making it almost black. 
+* Adjust fake self shadow calculation. 
+* Add some details to make it a bit more book alike.
 
 Some details
 ============
