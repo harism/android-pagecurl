@@ -268,8 +268,6 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	private void setCurlPos(PointF curlPos, PointF curlDir, double radius) {
 
 		// First reposition curl so that page doesn't 'rip off' from book.
-		// TODO: This isn't exactly what I want. Curl direction should be
-		// modified instead.
 		if (mCurlState == CURL_RIGHT
 				|| (mCurlState == CURL_LEFT && mRenderer.getViewMode() == CurlRenderer.SHOW_ONE_PAGE)) {
 			RectF pageRect = mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT);
@@ -280,10 +278,12 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 				float diffX = curlPos.x - pageRect.left;
 				float leftY = curlPos.y + (diffX * curlDir.x / curlDir.y);
 				if (curlDir.y < 0 && leftY < pageRect.top) {
-					curlPos.y += pageRect.top - leftY;
+					curlDir.x = curlPos.y - pageRect.top;
+					curlDir.y = pageRect.left - curlPos.x;
 				}
-				if (curlDir.y > 0 && leftY > pageRect.bottom) {
-					curlPos.y -= leftY - pageRect.bottom;
+				else if (curlDir.y > 0 && leftY > pageRect.bottom) {
+					curlDir.x = pageRect.bottom - curlPos.y;
+					curlDir.y = curlPos.x - pageRect.left;
 				}
 			}
 		} else if (mCurlState == CURL_LEFT) {
@@ -295,15 +295,26 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 				float diffX = curlPos.x - pageRect.right;
 				float rightY = curlPos.y + (diffX * curlDir.x / curlDir.y);
 				if (curlDir.y < 0 && rightY < pageRect.top) {
-					curlPos.y += pageRect.top - rightY;
+					curlDir.x = pageRect.top - curlPos.y;
+					curlDir.y = curlPos.x - pageRect.right;
 				}
-				if (curlDir.y > 0 && rightY > pageRect.bottom) {
-					curlPos.y -= rightY - pageRect.bottom;
+				else if (curlDir.y > 0 && rightY > pageRect.bottom) {
+					curlDir.x = curlPos.y - pageRect.bottom;
+					curlDir.y = pageRect.right - curlPos.x;
 				}
 			}
 		}
-
-		mPageCurl.curl(curlPos, curlDir, radius);
+		
+		// Finally normalize direction vector and do rendering.
+		double dist = Math.sqrt(curlDir.x * curlDir.x + curlDir.y * curlDir.y);
+		if (dist != 0) {
+			curlDir.x /= dist;
+			curlDir.y /= dist;
+			mPageCurl.curl(curlPos, curlDir, radius);
+		} else {
+			mPageCurl.reset();
+		}
+		
 		requestRender();
 	}
 
@@ -463,13 +474,6 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			float dist = (float) Math.sqrt(mCurlDir.x * mCurlDir.x + mCurlDir.y
 					* mCurlDir.y);
 
-			if (dist == 0) {
-				return;
-			} else {
-				mCurlDir.x /= dist;
-				mCurlDir.y /= dist;
-			}
-
 			// Adjust curl radius so that if page is dragged far enough on
 			// opposite side, radius gets closer to zero.
 			float pageWidth = mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT)
@@ -483,13 +487,13 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			// Actual curl position calculation.
 			if (dist >= curlLen) {
 				double translate = (dist - curlLen) / 2;
-				mCurlPos.x -= mCurlDir.x * translate;
-				mCurlPos.y -= mCurlDir.y * translate;
+				mCurlPos.x -= mCurlDir.x * translate / dist;
+				mCurlPos.y -= mCurlDir.y * translate /dist;
 			} else {
 				double angle = Math.PI * Math.sqrt(dist / curlLen);
 				double translate = radius * Math.sin(angle);
-				mCurlPos.x += mCurlDir.x * translate;
-				mCurlPos.y += mCurlDir.y * translate;
+				mCurlPos.x += mCurlDir.x * translate / dist;
+				mCurlPos.y += mCurlDir.y * translate /dist;
 			}
 
 			setCurlPos(mCurlPos, mCurlDir, radius);
@@ -501,18 +505,10 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			float pageLeftX = mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT).left;
 			radius = Math.min(mCurlPos.x - pageLeftX, radius);
 
-			mCurlPos.x -= radius;
+			float pageRightX = mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT).right;
+			mCurlPos.x -= Math.min(pageRightX - mCurlPos.x, radius);
 			mCurlDir.x = mCurlPos.x + mDragStartPos.x;
 			mCurlDir.y = mCurlPos.y - mDragStartPos.y;
-			float dist = (float) Math.sqrt(mCurlDir.x * mCurlDir.x + mCurlDir.y
-					* mCurlDir.y);
-
-			if (dist == 0) {
-				return;
-			} else {
-				mCurlDir.x /= dist;
-				mCurlDir.y /= dist;
-			}
 
 			setCurlPos(mCurlPos, mCurlDir, radius);
 		}
