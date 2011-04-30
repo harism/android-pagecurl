@@ -49,8 +49,8 @@ radius. 'Paper' is first translated and rotated; curl position translates
 to origin and then rotated so that curl opens to right (1,0). This transformation makes
 it a bit easier to calculate rotating vertices as all vertices which have x -coordinate
 at least 0 are not affected. Vertices which have x -coordinate between (-PI*radius, 0)
-are within curl, and if x -coordinate is less than -PI*radius they are completely rotated.
-And scan line algorithm for splitting lines within curled area is more simple as
+are within 'curl', and if x -coordinate is less than -PI*radius they are completely rotated.
+And scan line algorithm for splitting lines within rotating area is more simple as
 scan lines are always vertical. Not to forget rotating happens around y -axis (0, radius) as
 cylinder center is positioned at x=0. And after we translate these vertices back to
 original position we have a curl which direction heads to direction vector and it's center
