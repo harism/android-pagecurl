@@ -24,8 +24,8 @@ It's more appropriate to have more vertices used for drawing curled area instead
 On negative side lots of code complexity comes from the need for creating a triangle strip for rendering.
 Using a solid grid such problems do not occur at all.<br/>
 <br/>
-[Page Flip 2D](http://nomtek.com/tips-for-developers/page-flip-2d/)<br/>
-[Page Flip 3D](http://nomtek.com/tips-for-developers/page-flip-3d/)<br/>
+[http://nomtek.com/tips-for-developers/page-flip-2d/]<br/>
+[http://nomtek.com/tips-for-developers/page-flip-3d/]<br/>
 <br/>
 It isn't very difficult to see what happens here once you take a paper and simply
 curl it to some direction. If you fold paper completely, cylinder, curling happens around,
@@ -48,6 +48,14 @@ cylinder center is positioned at x=0. And after we translate these vertices back
 original position we have a curl which direction heads to direction vector and it's center
 is located at given curl position.<br/>
 <br/>
-But, once again, using a piece of paper works much more as a proper
-explanation than words, mine at least, can tell. And maybe gives some idea how
-to make better/more realistic implementation. Happy page flipping  :)
+1. At first there is a piece of paper represented by 4 vertices at its corners.<br/>
+![http://github.com/downloads/harism/android_page_curl/paper1.png]<br/>
+2. And let's say we want to curl it approximately like this.<br/>
+![http://github.com/downloads/harism/android_page_curl/paper2.png]<br/>
+3. Which results in approximately following vertices.<br/>
+![http://github.com/downloads/harism/android_page_curl/paper3.png]<br/>
+<br/>
+But, once again, using a piece of paper and doing some experiments by yourself works
+much more as a proper explanation than words, mine at least, can tell.
+And maybe gives some idea how to make better/more realistic implementation.
+Happy page flipping  :)<br/>
