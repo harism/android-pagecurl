@@ -49,11 +49,11 @@ original position we have a curl which direction heads to direction vector and i
 is located at given curl position.<br/>
 <br/>
 1. At first there is a piece of paper represented by 4 vertices at its corners.<br/>
-![https://github.com/harism/android_page_curl/blob/master/paper1.jpg?raw=true]<br/>
+![Paper 1](https://github.com/harism/android_page_curl/blob/master/paper1.jpg?raw=true)<br/>
 2. And let's say we want to curl it approximately like this.<br/>
-![https://github.com/harism/android_page_curl/blob/master/paper2.jpg?raw=true]<br/>
+![Paper 2](https://github.com/harism/android_page_curl/blob/master/paper2.jpg?raw=true)<br/>
 3. Which results in approximately following vertices.<br/>
-![https://github.com/harism/android_page_curl/blob/master/paper3.jpg?raw=true]<br/>
+![Paper 3](https://github.com/harism/android_page_curl/blob/master/paper3.jpg?raw=true)<br/>
 <br/>
 But, once again, using a piece of paper and doing some experiments by yourself works
 much more as a proper explanation than words, mine at least, can tell.
