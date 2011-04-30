@@ -14,12 +14,21 @@ ToDo
 
 Some details
 ============
-Here are a few links describing this page curl implementation somewhat well.
+Implementation can be divided roughly in two parts.
+
+* CurlMesh - which handles actual curl calculations and everything related to its rendering.
+* CurlView - which is responsible for providing rendering environment - but more importantly -
+handles curl manipulation. Meaning it receives touch events and repositions curl based on it.
+While this sounds something utterly trivial, it really isn't, and becomes more complex if curl didn't happen
+around a cylinder. Depending on what you're trying to achieve of course. For me it was
+most important from the beginning that 'paper edge' follows cursor at all times.
+
+Anyway, here are a few links describing this page curl implementation somewhat well.
 Only difference is that instead of using a static grid I implemented an algorithm
 which 'splits' rectangle dynamically regarding curl position and direction.
 This is done in order to get better render quality and to reduce polygon count.
 We really do not want to draw polygons separately if they lie next to each other on same plane.
-It's more appropriate to have more vertices used for drawing curled area instead.
+It's more appropriate to have more vertices used for drawing rotating part instead.
 On negative side lots of code complexity comes from the need for creating a triangle strip for rendering.
 Using a solid grid such problems do not occur at all.<br/>
 
@@ -27,7 +36,7 @@ Using a solid grid such problems do not occur at all.<br/>
 * Page Flip 3D [http://nomtek.com/tips-for-developers/page-flip-3d/]
 
 It isn't very difficult to see what happens here once you take a paper and simply
-curl it to some direction. If you fold paper completely, cylinder, curling happens around,
+curl it to some direction. If you fold paper completely, cylinder, curl happens around,
 radius becomes zero, making it more of a 2D effect. And likewise folding the paper so
 that curl radius is constant most of the characteristics remain - most importantly there
 is a line - at center of this 'cylinder' - which has constant slope not dependent on radius.
@@ -36,13 +45,13 @@ a lot easier compared to using a cone as solid curling is done around.<br/>
 <br/>
 Curl/cylinder is defined with three parameters, position, which is any point on a line collinear to
 curl. Direction vector which tells direction curl 'opens to'. And curl/cylinder
-radius. 'Paper' is first translated and rotated, curl position is translated
-to origin and rotated so that curl opens to right (1,0). This transformation makes
-it a bit easier to calculate curled vertices as all vertices which have x -coordinate
+radius. 'Paper' is first translated and rotated; curl position translates
+to origin and then rotated so that curl opens to right (1,0). This transformation makes
+it a bit easier to calculate rotating vertices as all vertices which have x -coordinate
 at least 0 are not affected. Vertices which have x -coordinate between (-PI*radius, 0)
 are within curl, and if x -coordinate is less than -PI*radius they are completely rotated.
 And scan line algorithm for splitting lines within curled area is more simple as
-scan lines are always vertical. Not to forget curling happens around y -axis (0, radius) as
+scan lines are always vertical. Not to forget rotating happens around y -axis (0, radius) as
 cylinder center is positioned at x=0. And after we translate these vertices back to
 original position we have a curl which direction heads to direction vector and it's center
 is located at given curl position.<br/>
@@ -51,7 +60,9 @@ is located at given curl position.<br/>
 ![Paper 1](https://github.com/harism/android_page_curl/blob/master/paper1.jpg?raw=true)<br/>
 2. And let's say we want to curl it approximately like this.<br/>
 ![Paper 2](https://github.com/harism/android_page_curl/blob/master/paper2.jpg?raw=true)<br/>
-3. Which results in approximately following vertices.<br/>
+3. Which could results in something like these vertices. Adding more scan lines within the rotating
+area increases its quality. But the idea remains, bounding lines of original rectangle are split on
+more/less dense basis.<br/>
 ![Paper 3](https://github.com/harism/android_page_curl/blob/master/paper3.jpg?raw=true)<br/>
 <br/>
 But, once again, using a piece of paper and doing some experiments by yourself works
@@ -67,8 +78,8 @@ Some YouTube links to page curl/flip implementations I've found interesting for 
 * Huone Inc [http://www.youtube.com/watch?v=EVHksX0GdIQ]
 * CodeFlakes [http://www.youtube.com/watch?v=ynu4Ov-29Po]
 
-Not to forget some of my real time rendering heros. One day I'm beating them all, one day.
+Not to forget some of my real time rendering heros. One day I'm beating them all. One day.
 
-* Rgba&Tbc - Elevated [http://www.youtube.com/watch?v=_YWMGuh15nE]
-* Andromeda&Orb - Stargazer [http://www.youtube.com/watch?v=5u1cqYLNbJI]
-* Cncd&Flt - Numb Res [http://www.youtube.com/watch?v=LTOC_ajkRkU]
+* [Rgba&Tbc - Elevated](http://pouet.net/prod.php?which=52938) [http://www.youtube.com/watch?v=_YWMGuh15nE]
+* [Andromeda&Orb - Stargazer](http://pouet.net/prod.php?which=51438) [http://www.youtube.com/watch?v=5u1cqYLNbJI]
+* [Cncd&Flt - Numb Res](http://pouet.net/prod.php?which=56900) [http://www.youtube.com/watch?v=LTOC_ajkRkU]
