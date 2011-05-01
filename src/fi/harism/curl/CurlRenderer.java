@@ -24,6 +24,8 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	public static final int PAGE_LEFT = 1;
 	public static final int PAGE_RIGHT = 2;
 
+	private static final boolean USE_PERSPECTIVE_PROJECTION = false;
+
 	private int mViewMode = SHOW_ONE_PAGE;
 	// Rect for render area.
 	private RectF mViewRect = new RectF();
@@ -93,6 +95,10 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		gl.glClear(GL10.GL_COLOR_BUFFER_BIT); // | GL10.GL_DEPTH_BUFFER_BIT);
 		gl.glLoadIdentity();
 
+		if (USE_PERSPECTIVE_PROJECTION) {
+			gl.glTranslatef(0, 0, -6f);
+		}
+
 		for (int i = 0; i < mCurlMeshes.size(); ++i) {
 			mCurlMeshes.get(i).draw(gl);
 		}
@@ -115,8 +121,12 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 
 		gl.glMatrixMode(GL10.GL_PROJECTION);
 		gl.glLoadIdentity();
-		GLU.gluOrtho2D(gl, mViewRect.left, mViewRect.right, mViewRect.bottom,
-				mViewRect.top);
+		if (USE_PERSPECTIVE_PROJECTION) {
+			GLU.gluPerspective(gl, 20f, (float) width / height, .1f, 100f);
+		} else {
+			GLU.gluOrtho2D(gl, mViewRect.left, mViewRect.right,
+					mViewRect.bottom, mViewRect.top);
+		}
 
 		gl.glMatrixMode(GL10.GL_MODELVIEW);
 		gl.glLoadIdentity();
@@ -211,11 +221,11 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 			mPageRectRight.right -= mViewRect.width() * mMargins.right;
 			mPageRectRight.top += mViewRect.height() * mMargins.top;
 			mPageRectRight.bottom -= mViewRect.height() * mMargins.bottom;
-			
+
 			mPageRectLeft.set(mPageRectRight);
 			mPageRectLeft.right = (mPageRectLeft.right + mPageRectLeft.left) / 2;
 			mPageRectRight.left = mPageRectLeft.right;
-			
+
 			int bitmapW = (int) ((mPageRectRight.width() * mViewportWidth) / mViewRect
 					.width());
 			int bitmapH = (int) ((mPageRectRight.height() * mViewportHeight) / mViewRect
