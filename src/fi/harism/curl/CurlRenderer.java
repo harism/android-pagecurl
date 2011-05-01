@@ -27,6 +27,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	private int mViewMode = SHOW_ONE_PAGE;
 	// Rect for render area.
 	private RectF mViewRect = new RectF();
+	private RectF mMargins = new RectF();
 	// Screen size.
 	private int mViewportWidth;
 	private int mViewportHeight;
@@ -110,16 +111,12 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		mViewRect.bottom = -1.0f;
 		mViewRect.left = -ratio;
 		mViewRect.right = ratio;
+		updatePageRects();
 
 		gl.glMatrixMode(GL10.GL_PROJECTION);
 		gl.glLoadIdentity();
 		GLU.gluOrtho2D(gl, mViewRect.left, mViewRect.right, mViewRect.bottom,
 				mViewRect.top);
-
-		// TODO: Add more proper margin calculation
-		// But for now this hack has to do.
-		// mViewRect.inset(.1f, -.1f);
-		setViewMode(mViewMode);
 
 		gl.glMatrixMode(GL10.GL_MODELVIEW);
 		gl.glLoadIdentity();
@@ -154,23 +151,28 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	}
 
 	/**
+	 * Set margins or padding. Note: margins are proportional. Meaning a value
+	 * of .1f will produce a 10% margin.
+	 */
+	public synchronized void setMargins(float left, float top, float right,
+			float bottom) {
+		mMargins.left = left;
+		mMargins.top = top;
+		mMargins.right = right;
+		mMargins.bottom = bottom;
+		updatePageRects();
+	}
+
+	/**
 	 * Sets visible page count to one or two.
 	 */
 	public synchronized void setViewMode(int viewmode) {
 		if (viewmode == SHOW_ONE_PAGE) {
 			mViewMode = viewmode;
-			mPageRectRight.set(mViewRect);
-			mPageRectLeft.set(mPageRectRight);
-			mPageRectLeft.offset(-mPageRectRight.width(), 0);
-			mObserver.onBitmapSizeChanged(mViewportWidth, mViewportHeight);
+			updatePageRects();
 		} else if (viewmode == SHOW_TWO_PAGES) {
 			mViewMode = viewmode;
-			mPageRectLeft.set(mViewRect);
-			mPageRectLeft.right = 0;
-			mPageRectRight.set(mViewRect);
-			mPageRectRight.left = 0;
-			mObserver.onBitmapSizeChanged((mViewportWidth + 1) / 2,
-					mViewportHeight);
+			updatePageRects();
 		}
 	}
 
@@ -180,6 +182,46 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	public void translate(PointF pt) {
 		pt.x = mViewRect.left + (mViewRect.width() * pt.x / mViewportWidth);
 		pt.y = mViewRect.top - (-mViewRect.height() * pt.y / mViewportHeight);
+	}
+
+	/**
+	 * Recalculates page rectangles.
+	 */
+	private void updatePageRects() {
+		if (mViewRect.width() == 0 || mViewRect.height() == 0) {
+			return;
+		} else if (mViewMode == SHOW_ONE_PAGE) {
+			mPageRectRight.set(mViewRect);
+			mPageRectRight.left += mViewRect.width() * mMargins.left;
+			mPageRectRight.right -= mViewRect.width() * mMargins.right;
+			mPageRectRight.top += mViewRect.height() * mMargins.top;
+			mPageRectRight.bottom -= mViewRect.height() * mMargins.bottom;
+
+			mPageRectLeft.set(mPageRectRight);
+			mPageRectLeft.offset(-mPageRectRight.width(), 0);
+
+			int bitmapW = (int) ((mPageRectRight.width() * mViewportWidth) / mViewRect
+					.width());
+			int bitmapH = (int) ((mPageRectRight.height() * mViewportHeight) / mViewRect
+					.height());
+			mObserver.onBitmapSizeChanged(bitmapW, bitmapH);
+		} else if (mViewMode == SHOW_TWO_PAGES) {
+			mPageRectRight.set(mViewRect);
+			mPageRectRight.left += mViewRect.width() * mMargins.left;
+			mPageRectRight.right -= mViewRect.width() * mMargins.right;
+			mPageRectRight.top += mViewRect.height() * mMargins.top;
+			mPageRectRight.bottom -= mViewRect.height() * mMargins.bottom;
+			
+			mPageRectLeft.set(mPageRectRight);
+			mPageRectLeft.right = (mPageRectLeft.right + mPageRectLeft.left) / 2;
+			mPageRectRight.left = mPageRectLeft.right;
+			
+			int bitmapW = (int) ((mPageRectRight.width() * mViewportWidth) / mViewRect
+					.width());
+			int bitmapH = (int) ((mPageRectRight.height() * mViewportHeight) / mViewRect
+					.height());
+			mObserver.onBitmapSizeChanged(bitmapW, bitmapH);
+		}
 	}
 
 	/**
