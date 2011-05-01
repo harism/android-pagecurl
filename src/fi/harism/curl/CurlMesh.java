@@ -206,6 +206,13 @@ public class CurlMesh {
 			v.translate(-curlPos.x, -curlPos.y);
 			v.rotateZ(-curlAngle);
 
+			// Let's drop precision a bit. This is done due to the fact that
+			// rotating multiple of 90 degrees causes some inaccuracy. In this
+			// case one would expect that after rotation e.g vertices on right
+			// side would have same x -coordinate. Which isn't true.
+			v.mPosX = (float) v.mPosX;
+			v.mPosY = (float) v.mPosY;
+
 			int j = 0;
 			for (; j < mRotatedVertices.size(); ++j) {
 				Vertex v2 = mRotatedVertices.get(j);
@@ -229,7 +236,7 @@ public class CurlMesh {
 		}
 
 		// Our rectangle lines/vertex indices.
-		final int lines[] = { 0, 1, 0, 2, 3, 1, 3, 2 };
+		final int lines[] = { 0, 1, 0, 2, 1, 3, 2, 3 };
 		// Length of 'curl' curve.
 		double curlLength = Math.PI * radius;
 		// Calculate scan lines.
@@ -305,7 +312,8 @@ public class CurlMesh {
 				}
 				// Vertex lies within 'curl'.
 				else {
-					// Even though it's not obvious from the if-else clause, here
+					// Even though it's not obvious from the if-else clause,
+					// here
 					// v.mPosX is between [-curlLength, 0]. And we can do
 					// calculations around a half cylinder.
 					double rotY = Math.PI * (v.mPosX / curlLength);
@@ -606,8 +614,7 @@ public class CurlMesh {
 		for (int j = 0; j < lineIndices.length; j += 2) {
 			Vertex v1 = vertices.get(lineIndices[j]);
 			Vertex v2 = vertices.get(lineIndices[j + 1]);
-			if ((v1.mPosX > scanX && v2.mPosX < scanX)
-					|| (v2.mPosX > scanX && v1.mPosX < scanX)) {
+			if (v1.mPosX > scanX && v2.mPosX < scanX) {
 				double c = (scanX - v2.mPosX) / (v1.mPosX - v2.mPosX);
 				Vertex n = mTempVertices.remove(0);
 				n.set(v2);
