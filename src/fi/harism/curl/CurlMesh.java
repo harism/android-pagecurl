@@ -472,16 +472,18 @@ public class CurlMesh {
 			gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, mVerticesCountFront);
 			gl.glDisable(GL10.GL_TEXTURE_2D);
 		}
+		int backStartIdx = Math.max(0, mVerticesCountFront - 2);
+		int backCount = mVerticesCountFront + mVerticesCountBack - backStartIdx;
 		// Draw blank / 'white' back facing vertices.
 		gl.glBlendFunc(GL10.GL_ONE, GL10.GL_ZERO);
-		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, mVerticesCountFront,
-				mVerticesCountBack);
+		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, backStartIdx,
+				backCount);
 		// Draw back facing texture.
 		if (DRAW_TEXTURE) {
 			gl.glEnable(GL10.GL_TEXTURE_2D);
 			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
-			gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, mVerticesCountFront,
-					mVerticesCountBack);
+			gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, backStartIdx,
+					backCount);
 			gl.glDisable(GL10.GL_TEXTURE_2D);
 		}
 
