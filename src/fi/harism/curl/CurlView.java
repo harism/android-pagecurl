@@ -147,8 +147,10 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 
 		if (h > w) {
 			mRenderer.setViewMode(CurlRenderer.SHOW_ONE_PAGE);
+			mRenderer.setMargins(.05f, .05f, .05f, .05f);
 		} else {
 			mRenderer.setViewMode(CurlRenderer.SHOW_TWO_PAGES);
+			mRenderer.setMargins(.1f, .05f, .1f, .05f);
 		}
 
 		requestRender();
@@ -162,33 +164,53 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			return false;
 		}
 
+		RectF rightRect = mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT);
+		RectF leftRect = mRenderer.getPageRect(CurlRenderer.PAGE_LEFT);
+		mPointerPos.x = me.getX();
+		mPointerPos.y = me.getY();
+		mRenderer.translate(mPointerPos);
+		if (mPointerPos.x > rightRect.right) {
+			mPointerPos.x = rightRect.right;
+		} else if (mRenderer.getViewMode() == CurlRenderer.SHOW_ONE_PAGE
+				&& mPointerPos.x < rightRect.left) {
+			mPointerPos.x = rightRect.left;
+		} else if (mRenderer.getViewMode() == CurlRenderer.SHOW_TWO_PAGES
+				&& mPointerPos.x < leftRect.left) {
+			mPointerPos.x = leftRect.left;
+		}
+
 		switch (me.getAction()) {
 		case MotionEvent.ACTION_DOWN: {
-			float x = me.getX();
+			mDragStartPos.set(mPointerPos);
+			if (mDragStartPos.y > rightRect.top) {
+				mDragStartPos.y = rightRect.top;
+			} else if (mDragStartPos.y < rightRect.bottom) {
+				mDragStartPos.y = rightRect.bottom;
+			}
 
-			// Here we make rough estimation on what user wants to do depending
-			// on whether touch happened on left or right side of screen.
-			if (x > getWidth() / 2) {
-				if (mCurrentIndex < mBitmapProvider.getBitmapCount()) {
-					mDragStartPos.x = getWidth();
-					mDragStartPos.y = me.getY();
-					mRenderer.translate(mDragStartPos);
+			if (mRenderer.getViewMode() == CurlRenderer.SHOW_TWO_PAGES) {
+				if (mDragStartPos.x < leftRect.right && mCurrentIndex > 0) {
+					mDragStartPos.x = leftRect.left;
+					startCurl(CURL_LEFT);
+				} else if (mDragStartPos.x > rightRect.left
+						&& mCurrentIndex < mBitmapProvider.getBitmapCount()) {
+					mDragStartPos.x = rightRect.right;
 					startCurl(CURL_RIGHT);
 				}
-			} else {
-				if (mCurrentIndex > 0) {
-					mDragStartPos.x = 0;
-					mDragStartPos.y = me.getY();
-					mRenderer.translate(mDragStartPos);
+			} else if (mRenderer.getViewMode() == CurlRenderer.SHOW_ONE_PAGE) {
+				float halfX = (rightRect.right + rightRect.left) / 2;
+				if (mDragStartPos.x < halfX && mCurrentIndex > 0) {
+					mDragStartPos.x = rightRect.left;
 					startCurl(CURL_LEFT);
+				} else if (mDragStartPos.x >= halfX
+						&& mCurrentIndex < mBitmapProvider.getBitmapCount()) {
+					mDragStartPos.x = rightRect.right;
+					startCurl(CURL_RIGHT);
 				}
 			}
 			// Let this case clause flow through to next one.
 		}
 		case MotionEvent.ACTION_MOVE: {
-			mPointerPos.x = me.getX();
-			mPointerPos.y = me.getY();
-			mRenderer.translate(mPointerPos);
 			updateCurlPos(mPointerPos);
 			break;
 		}
@@ -196,14 +218,12 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		case MotionEvent.ACTION_UP: {
 			if (mCurlState == CURL_LEFT || mCurlState == CURL_RIGHT) {
 				// Animation source is the point from where animation starts.
-				mAnimationSource.x = me.getX();
-				mAnimationSource.y = me.getY();
-				mRenderer.translate(mAnimationSource);
+				mAnimationSource.set(mPointerPos);
 				mAnimationStartTime = System.currentTimeMillis();
-				// Once again, we'll do rough estimation on what user intentions
-				// are depending on whether user released pointer on left or
-				// right side of screen.
-				if (me.getX() > getWidth() / 2) {
+
+				if ((mRenderer.getViewMode() == CurlRenderer.SHOW_ONE_PAGE && mPointerPos.x > (rightRect.left + rightRect.right) / 2)
+						|| mRenderer.getViewMode() == CurlRenderer.SHOW_TWO_PAGES
+						&& mPointerPos.x > rightRect.left) {
 					// On right side target is always right page's right border.
 					mAnimationTarget.set(mDragStartPos);
 					mAnimationTarget.x = mRenderer
@@ -214,11 +234,9 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 					mAnimationTarget.set(mDragStartPos);
 					if (mCurlState == CURL_RIGHT
 							|| mRenderer.getViewMode() == CurlRenderer.SHOW_TWO_PAGES) {
-						mAnimationTarget.x = mRenderer
-								.getPageRect(CurlRenderer.PAGE_LEFT).left;
+						mAnimationTarget.x = leftRect.left;
 					} else {
-						mAnimationTarget.x = mRenderer
-								.getPageRect(CurlRenderer.PAGE_RIGHT).left;
+						mAnimationTarget.x = rightRect.left;
 					}
 					mAnimationTargetEvent = SET_CURL_TO_LEFT;
 				}
@@ -458,7 +476,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	private void updateCurlPos(PointF pointerPos) {
 
 		// Default curl radius.
-		double radius = .3f;
+		double radius = mRenderer.getPageRect(CURL_RIGHT).width() / 3;
 		mCurlPos.set(pointerPos);
 
 		// If curl happens on right page, or on left page on two page mode,
