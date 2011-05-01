@@ -142,7 +142,7 @@ public class CurlMesh {
 			mShadowColors.position(0);
 
 			ByteBuffer sibb = ByteBuffer
-					.allocateDirect(maxShadowVerticesCount * 2 * 4);
+					.allocateDirect(maxShadowVerticesCount * 3 * 4);
 			sibb.order(ByteOrder.nativeOrder());
 			mShadowVertices = sibb.asFloatBuffer();
 			mShadowVertices.position(0);
@@ -340,13 +340,13 @@ public class CurlMesh {
 
 				// Drop shadow is cast 'behind' the curl.
 				if (DRAW_SHADOW && v.mPosZ > 0 && v.mPosZ <= radius) {
-					// TODO: There is some overlapping in some cases, not all
-					// vertices should be added to shadow.
 					ShadowVertex sv = mTempShadowVertices.remove(0);
 					sv.mPosX = v.mPosX;
 					sv.mPosY = v.mPosY;
+					sv.mPosZ = v.mPosZ;
 					sv.mPenumbraX = (v.mPosZ / 2) * -directionVec.x;
 					sv.mPenumbraY = (v.mPosZ / 2) * -directionVec.y;
+					sv.mPenumbraInnerColor = v.mPosZ / radius;
 					int idx = (mDropShadowVertices.size() + 1) / 2;
 					mDropShadowVertices.add(idx, sv);
 				}
@@ -357,8 +357,10 @@ public class CurlMesh {
 					ShadowVertex sv = mTempShadowVertices.remove(0);
 					sv.mPosX = v.mPosX;
 					sv.mPosY = v.mPosY;
+					sv.mPosZ = v.mPosZ;
 					sv.mPenumbraX = ((v.mPosZ - radius) / 2) * directionVec.x;
 					sv.mPenumbraY = ((v.mPosZ - radius) / 2) * directionVec.y;
+					sv.mPenumbraInnerColor = (v.mPosZ - radius) / radius;
 					int idx = (mSelfShadowVertices.size() + 1) / 2;
 					mSelfShadowVertices.add(idx, sv);
 				}
@@ -378,13 +380,21 @@ public class CurlMesh {
 			mShadowColors.position(0);
 			mShadowVertices.position(0);
 			mDropShadowCount = 0;
+
 			for (int i = 0; i < mDropShadowVertices.size(); ++i) {
 				ShadowVertex sv = mDropShadowVertices.get(i);
 				mShadowVertices.put((float) sv.mPosX);
 				mShadowVertices.put((float) sv.mPosY);
+				mShadowVertices.put((float) sv.mPosZ);
 				mShadowVertices.put((float) (sv.mPosX + sv.mPenumbraX));
 				mShadowVertices.put((float) (sv.mPosY + sv.mPenumbraY));
-				mShadowColors.put(SHADOW_INNER_COLOR);
+				mShadowVertices.put((float) sv.mPosZ);
+				for (int j = 0; j < 4; ++j) {
+					double color = SHADOW_OUTER_COLOR[j]
+							+ (SHADOW_INNER_COLOR[j] - SHADOW_OUTER_COLOR[j])
+							* sv.mPenumbraInnerColor;
+					mShadowColors.put((float) color);
+				}
 				mShadowColors.put(SHADOW_OUTER_COLOR);
 				mDropShadowCount += 2;
 			}
@@ -393,9 +403,16 @@ public class CurlMesh {
 				ShadowVertex sv = mSelfShadowVertices.get(i);
 				mShadowVertices.put((float) sv.mPosX);
 				mShadowVertices.put((float) sv.mPosY);
+				mShadowVertices.put((float) sv.mPosZ);
 				mShadowVertices.put((float) (sv.mPosX + sv.mPenumbraX));
 				mShadowVertices.put((float) (sv.mPosY + sv.mPenumbraY));
-				mShadowColors.put(SHADOW_INNER_COLOR);
+				mShadowVertices.put((float) sv.mPosZ);
+				for (int j = 0; j < 4; ++j) {
+					double color = SHADOW_OUTER_COLOR[j]
+							+ (SHADOW_INNER_COLOR[j] - SHADOW_OUTER_COLOR[j])
+							* sv.mPenumbraInnerColor;
+					mShadowColors.put((float) color);
+				}
 				mShadowColors.put(SHADOW_OUTER_COLOR);
 				mSelfShadowCount += 2;
 			}
@@ -445,7 +462,7 @@ public class CurlMesh {
 			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
 			gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
 			gl.glColorPointer(4, GL10.GL_FLOAT, 0, mShadowColors);
-			gl.glVertexPointer(2, GL10.GL_FLOAT, 0, mShadowVertices);
+			gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mShadowVertices);
 			gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, mDropShadowCount);
 			gl.glDisableClientState(GL10.GL_COLOR_ARRAY);
 		}
@@ -476,14 +493,12 @@ public class CurlMesh {
 		int backCount = mVerticesCountFront + mVerticesCountBack - backStartIdx;
 		// Draw blank / 'white' back facing vertices.
 		gl.glBlendFunc(GL10.GL_ONE, GL10.GL_ZERO);
-		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, backStartIdx,
-				backCount);
+		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, backStartIdx, backCount);
 		// Draw back facing texture.
 		if (DRAW_TEXTURE) {
 			gl.glEnable(GL10.GL_TEXTURE_2D);
 			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
-			gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, backStartIdx,
-					backCount);
+			gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, backStartIdx, backCount);
 			gl.glDisable(GL10.GL_TEXTURE_2D);
 		}
 
@@ -513,7 +528,7 @@ public class CurlMesh {
 			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
 			gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
 			gl.glColorPointer(4, GL10.GL_FLOAT, 0, mShadowColors);
-			gl.glVertexPointer(2, GL10.GL_FLOAT, 0, mShadowVertices);
+			gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mShadowVertices);
 			gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, mDropShadowCount,
 					mSelfShadowCount);
 			gl.glDisableClientState(GL10.GL_COLOR_ARRAY);
@@ -730,8 +745,10 @@ public class CurlMesh {
 	private class ShadowVertex {
 		public double mPosX;
 		public double mPosY;
+		public double mPosZ;
 		public double mPenumbraX;
 		public double mPenumbraY;
+		public double mPenumbraInnerColor;
 	}
 
 	/**
