@@ -84,13 +84,6 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		return mViewMode;
 	}
 	
-	/**
-	 * Display/Hide left page
-	 */
-	public void setDisplayLeftPage(boolean displayLeftPage){
-		this.displayLeftPage = displayLeftPage;
-	}
-
 	@Override
 	public synchronized void onDrawFrame(GL10 gl) {
 		if (mBackgroundColorChanged) {
@@ -167,6 +160,13 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	public void setBackgroundColor(int color) {
 		mBackgroundColor = color;
 		mBackgroundColorChanged = true;
+	}
+
+	/**
+	 * Display/Hide left page
+	 */
+	public void setDisplayLeftPage(boolean displayLeftPage){
+		this.displayLeftPage = displayLeftPage;
 	}
 
 	/**
