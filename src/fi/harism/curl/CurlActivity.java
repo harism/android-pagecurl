@@ -1,6 +1,7 @@
 package fi.harism.curl;
 
 import android.app.Activity;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
@@ -17,15 +18,37 @@ public class CurlActivity extends Activity {
 
 	private CurlView mCurlView;
 
+	//used in onCreate() and onConfigurationChanged() to set up the UI elements
+	public void initializeUI() {
+	  	int index = 0;
+	  	if(mCurlView != null){
+	  		index = mCurlView.getCurrentIndex();
+	  	}
+		mCurlView = (CurlView) findViewById(R.id.curl);
+		mCurlView.setBitmapProvider(new BitmapProvider());
+		mCurlView.setCurrentIndex(index);
+		//mCurlView.onLandscapeShowTwoPages(false); //false will force one page mode in landscape
+		//mCurlView.displayLeftPage(false); //false hide the left page in one page mode
+		//mCurlView.allowLastPageCurl(false); //false will prevent the last page from turning.
+	}	
+	
+	//Called when the activity is first created.
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
-		mCurlView = (CurlView) findViewById(R.id.curl);
-		mCurlView.setBitmapProvider(new BitmapProvider());
-		//mCurlView.onLandscapeShowTwoPages(false); //false will force one page mode in landscape
-		//mCurlView.displayLeftPage(false); //false hide the left page in one page mode
-		//mCurlView.allowLastPageCurl(false); //false will prevent the last page from turning.
+
+		initializeUI();
+	}
+	
+	//this is called when the screen rotates.
+	// (onCreate is no longer called when screen rotates due to manifest, see: android:configChanges in AndroidManifest.xml)
+	@Override
+	public void onConfigurationChanged(Configuration newConfig) {
+	  	super.onConfigurationChanged(newConfig);
+	  	setContentView(R.layout.main);
+
+		initializeUI();
 	}
 
 	@Override
@@ -39,7 +62,7 @@ public class CurlActivity extends Activity {
 		super.onResume();
 		mCurlView.onResume();
 	}
-
+	
 	/**
 	 * Bitmap provider.
 	 */
