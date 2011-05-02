@@ -57,6 +57,8 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	private static final RectF TEXTURE_RECT_FRONT = new RectF(0, 0, 1, 1);
 	private static final RectF TEXTURE_RECT_BACK = new RectF(1, 0, 0, 1);
 
+	private boolean onLandscapeTwoPage = true;
+	
 	/**
 	 * Default constructor.
 	 */
@@ -145,7 +147,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	public void onSizeChanged(int w, int h, int ow, int oh) {
 		super.onSizeChanged(w, h, ow, oh);
 
-		if (h > w) {
+		if (h > w || !onLandscapeTwoPage) {
 			mRenderer.setViewMode(CurlRenderer.SHOW_ONE_PAGE);
 			mRenderer.setMargins(.05f, .05f, .05f, .05f);
 		} else {
@@ -162,8 +164,8 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		// TODO: Stop animation on touch event and return to drag mode.
 		if (mAnimate) {
 			return false;
-		}
-
+		}		
+		
 		RectF rightRect = mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT);
 		RectF leftRect = mRenderer.getPageRect(CurlRenderer.PAGE_LEFT);
 		mPointerPos.x = me.getX();
@@ -248,6 +250,13 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		}
 
 		return true;
+	}
+	
+	/**
+	 * Set wither to allow two page view in landscape mode
+	 */
+	public void onLandscapeShowTwoPages(boolean onLandscapeTwoPage){
+		this.onLandscapeTwoPage = onLandscapeTwoPage;
 	}
 
 	/**
