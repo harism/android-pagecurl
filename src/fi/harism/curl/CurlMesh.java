@@ -197,7 +197,10 @@ public class CurlMesh {
 		curlAngle = directionVec.y > 0 ? -curlAngle : curlAngle;
 
 		// Initiate rotated 'rectangle' which's is translated to curlPos and
-		// rotated so that curl direction heads to (1,0).
+		// rotated so that curl direction heads to (1,0). Vertices are ordered
+		// in ascending order based on x -coordinate at the same time. And using
+		// y -coordinate in very rare case where two vertices have same x
+		// -coordinate.
 		mTempVertices.addAll(mRotatedVertices);
 		mRotatedVertices.clear();
 		for (int i = 0; i < 4; ++i) {
@@ -205,14 +208,6 @@ public class CurlMesh {
 			v.set(mRectangle[i]);
 			v.translate(-curlPos.x, -curlPos.y);
 			v.rotateZ(-curlAngle);
-
-			// Let's drop precision a bit. This is done due to the fact that
-			// rotating multiple of 90 degrees causes some inaccuracy. In this
-			// case one would expect that after rotation e.g vertices on right
-			// side would have same x -coordinate. Which isn't true.
-			v.mPosX = (float) v.mPosX;
-			v.mPosY = (float) v.mPosY;
-
 			int j = 0;
 			for (; j < mRotatedVertices.size(); ++j) {
 				Vertex v2 = mRotatedVertices.get(j);
@@ -226,6 +221,29 @@ public class CurlMesh {
 			mRotatedVertices.add(j, v);
 		}
 
+		// Rotated rectangle lines/vertex indices. We need to find bounding
+		// lines for rotated rectangle. After sorting vertices according to
+		// their x -coordinate we don't have to worry about vertices at indices
+		// 0 and 1. But due to inaccuracy it's possible vertex 3 is not the
+		// opposing corner from vertex 0. So we are calculating distance from
+		// vertex 0 to vertices 2 and 3 - and altering line indices if needed.
+		int lines[][] = { {0, 1}, {0, 2}, {1, 3}, {2, 3} };
+		{
+			Vertex v0 = mRotatedVertices.get(0);
+			Vertex v2 = mRotatedVertices.get(2);
+			Vertex v3 = mRotatedVertices.get(3);
+			double dist2 = Math.sqrt((v0.mPosX - v2.mPosX)
+					* (v0.mPosX - v2.mPosX) + (v0.mPosY - v2.mPosY)
+					* (v0.mPosY - v2.mPosY));
+			double dist3 = Math.sqrt((v0.mPosX - v3.mPosX)
+					* (v0.mPosX - v3.mPosX) + (v0.mPosY - v3.mPosY)
+					* (v0.mPosY - v3.mPosY));
+			if (dist2 > dist3) {
+				lines[1][1] = 3;
+				lines[2][1] = 2;
+			}
+		}
+
 		mVerticesCountFront = mVerticesCountBack = 0;
 
 		if (DRAW_SHADOW) {
@@ -235,8 +253,6 @@ public class CurlMesh {
 			mSelfShadowVertices.clear();
 		}
 
-		// Our rectangle lines/vertex indices.
-		final int lines[] = { 0, 1, 0, 2, 1, 3, 2, 3 };
 		// Length of 'curl' curve.
 		double curlLength = Math.PI * radius;
 		// Calculate scan lines.
@@ -626,11 +642,11 @@ public class CurlMesh {
 	 * Calculates intersections for given scan line.
 	 */
 	private Array<Vertex> getIntersections(Array<Vertex> vertices,
-			int[] lineIndices, double scanX) {
+			int[][] lineIndices, double scanX) {
 		mIntersections.clear();
-		for (int j = 0; j < lineIndices.length; j += 2) {
-			Vertex v1 = vertices.get(lineIndices[j]);
-			Vertex v2 = vertices.get(lineIndices[j + 1]);
+		for (int j = 0; j < lineIndices.length; j++) {
+			Vertex v1 = vertices.get(lineIndices[j][0]);
+			Vertex v2 = vertices.get(lineIndices[j][1]);
 			if (v1.mPosX > scanX && v2.mPosX < scanX) {
 				double c = (scanX - v2.mPosX) / (v1.mPosX - v2.mPosX);
 				Vertex n = mTempVertices.remove(0);
