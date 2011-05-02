@@ -266,7 +266,14 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	}
 	
 	/**
-	 * Set initial page index.  Allows developer to set the initial page to display.
+	 * Set current page index.
+	 */
+	public int getCurrentIndex(){
+		return mCurrentIndex;
+	}
+	
+	/**
+	 * Set page index.
 	 */
 	public void setCurrentIndex(int index){
 		if(mBitmapProvider == null || index <=0){
@@ -276,6 +283,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		}else{
 			mCurrentIndex = mBitmapProvider.getBitmapCount()-1;
 		}
+		refreshRender();
 	}
 	
 	/**
@@ -298,10 +306,17 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	public void setBitmapProvider(CurlBitmapProvider bitmapProvider) {
 		mBitmapProvider = bitmapProvider;
 		mCurrentIndex = 0;
-		updateBitmaps();
-		requestRender();
+		refreshRender();
 	}
-
+	
+	/**
+	 * refresh the render (on device rotation, etc.)
+	 */
+	public void refreshRender(){
+		updateBitmaps();
+		requestRender();		
+	}
+	
 	/**
 	 * Initialize method.
 	 */
