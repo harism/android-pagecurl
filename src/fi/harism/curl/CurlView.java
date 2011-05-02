@@ -58,6 +58,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	private static final RectF TEXTURE_RECT_BACK = new RectF(1, 0, 0, 1);
 
 	private boolean onLandscapeTwoPage = true;
+	private boolean allowLastPageCurl = true;
 	
 	/**
 	 * Default constructor.
@@ -181,6 +182,11 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			mPointerPos.x = leftRect.left;
 		}
 
+		//Prevent a right page curl if the touch is on the last page and allowLastPageCurl is false.
+		if(!allowLastPageCurl && mCurrentIndex == mBitmapProvider.getBitmapCount()-1 && mCurlState != CURL_LEFT && mPointerPos.x > 0){
+			return false;
+		}
+
 		switch (me.getAction()) {
 		case MotionEvent.ACTION_DOWN: {
 			mDragStartPos.set(mPointerPos);
@@ -258,6 +264,13 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	public void onLandscapeShowTwoPages(boolean onLandscapeTwoPage){
 		this.onLandscapeTwoPage = onLandscapeTwoPage;
 	}
+	
+	/**
+	 * Allow the last page to curl
+	 */
+	public void allowLastPageCurl(boolean allowLastPageCurl){
+		this.allowLastPageCurl = allowLastPageCurl;
+	}	
 
 	/**
 	 * Update/set bitmap provider.
