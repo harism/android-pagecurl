@@ -87,6 +87,27 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		this(ctx, attrs);
 	}
 
+	/**
+	 * Allow the last page to curl
+	 */
+	public void allowLastPageCurl(boolean allowLastPageCurl){
+		this.allowLastPageCurl = allowLastPageCurl;
+	}
+
+	/**
+	 * Display/Hide left page
+	 */
+	public void displayLeftPage(boolean displayLeftPage){
+		mRenderer.setDisplayLeftPage(displayLeftPage);
+	}
+
+	/**
+	 * Set current page index.
+	 */
+	public int getCurrentIndex(){
+		return mCurrentIndex;
+	}
+
 	@Override
 	public void onBitmapSizeChanged(int width, int height) {
 		mBitmapWidth = width;
@@ -94,10 +115,17 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		updateBitmaps();
 		requestRender();
 	}
-
+	
+	/**
+	 * Set wither to allow two page view in landscape mode
+	 */
+	public void onLandscapeShowTwoPages(boolean onLandscapeTwoPage){
+		this.onLandscapeTwoPage = onLandscapeTwoPage;
+	}
+	
 	@Override
 	public void onRenderDone() {
-		// We're not animating.
+		// We are not animating.
 		if (mAnimate == false) {
 			return;
 		}
@@ -147,7 +175,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			updateCurlPos(mPointerPos);
 		}
 	}
-
+	
 	@Override
 	public void onSizeChanged(int w, int h, int ow, int oh) {
 		super.onSizeChanged(w, h, ow, oh);
@@ -161,14 +189,14 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 
 		requestRender();
 	}
-
+	
 	@Override
 	public boolean onTouch(View view, MotionEvent me) {
 		// No dragging during animation at the moment.
 		// TODO: Stop animation on touch event and return to drag mode.
-		if (mAnimate) {
+		if (mAnimate || mBitmapProvider == null) {
 			return false;
-		}		
+		}
 		
 		RectF rightRect = mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT);
 		RectF leftRect = mRenderer.getPageRect(CurlRenderer.PAGE_LEFT);
@@ -262,30 +290,22 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	}
 	
 	/**
-	 * Set margins or padding. Note: margins are proportional. Meaning a value
-	 * of .1f will produce a 10% margin.
+	 * refresh the render (on device rotation, etc.)
 	 */
-	public synchronized void setMargins(float left, float top, float right, float bottom) {
-		leftMargin = left;
-		topMargin = top;
-		rightMargin = right;
-		bottomMargin = bottom;
+	public void refreshRender(){
+		updateBitmaps();
+		requestRender();		
 	}
-	
+
 	/**
-	 * Set wither to allow two page view in landscape mode
+	 * Update/set bitmap provider.
 	 */
-	public void onLandscapeShowTwoPages(boolean onLandscapeTwoPage){
-		this.onLandscapeTwoPage = onLandscapeTwoPage;
-	}
-	
-	/**
-	 * Set current page index.
-	 */
-	public int getCurrentIndex(){
-		return mCurrentIndex;
-	}
-	
+	public void setBitmapProvider(CurlBitmapProvider bitmapProvider) {
+		mBitmapProvider = bitmapProvider;
+		mCurrentIndex = 0;
+		refreshRender();
+	}	
+
 	/**
 	 * Set page index.
 	 */
@@ -301,34 +321,14 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	}
 	
 	/**
-	 * Display/Hide left page
+	 * Set margins or padding. Note: margins are proportional. Meaning a value
+	 * of .1f will produce a 10% margin.
 	 */
-	public void displayLeftPage(boolean displayLeftPage){
-		mRenderer.setDisplayLeftPage(displayLeftPage);
-	}
-
-	/**
-	 * Allow the last page to curl
-	 */
-	public void allowLastPageCurl(boolean allowLastPageCurl){
-		this.allowLastPageCurl = allowLastPageCurl;
-	}	
-
-	/**
-	 * Update/set bitmap provider.
-	 */
-	public void setBitmapProvider(CurlBitmapProvider bitmapProvider) {
-		mBitmapProvider = bitmapProvider;
-		mCurrentIndex = 0;
-		refreshRender();
-	}
-	
-	/**
-	 * refresh the render (on device rotation, etc.)
-	 */
-	public void refreshRender(){
-		updateBitmaps();
-		requestRender();		
+	public synchronized void setMargins(float left, float top, float right, float bottom) {
+		leftMargin = left;
+		topMargin = top;
+		rightMargin = right;
+		bottomMargin = bottom;
 	}
 	
 	/**
