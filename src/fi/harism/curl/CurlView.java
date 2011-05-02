@@ -266,6 +266,13 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	}
 	
 	/**
+	 * Display/Hide left page
+	 */
+	public void displayLeftPage(boolean displayLeftPage){
+		mRenderer.setDisplayLeftPage(displayLeftPage);
+	}
+
+	/**
 	 * Allow the last page to curl
 	 */
 	public void allowLastPageCurl(boolean allowLastPageCurl){

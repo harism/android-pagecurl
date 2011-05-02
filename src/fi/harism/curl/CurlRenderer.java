@@ -44,6 +44,8 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 
 	private RectF mPageRectLeft;
 	private RectF mPageRectRight;
+	
+	private boolean displayLeftPage = true; //Only effects SHOW_ONE_PAGE
 
 	/**
 	 * Basic constructor.
@@ -80,6 +82,13 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	 */
 	public int getViewMode() {
 		return mViewMode;
+	}
+	
+	/**
+	 * Display/Hide left page
+	 */
+	public void setDisplayLeftPage(boolean displayLeftPage){
+		this.displayLeftPage = displayLeftPage;
 	}
 
 	@Override
@@ -208,7 +217,8 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 			mPageRectRight.bottom -= mViewRect.height() * mMargins.bottom;
 
 			mPageRectLeft.set(mPageRectRight);
-			mPageRectLeft.offset(-mPageRectRight.width(), 0);
+			//TODO: displayLeftPage is just forcing the LEFT page way over to the right if (false), it might be better not to render the left page at all.
+			mPageRectLeft.offset(-(mPageRectRight.width()*(displayLeftPage ? 1 : 2)), 0);
 
 			int bitmapW = (int) ((mPageRectRight.width() * mViewportWidth) / mViewRect
 					.width());
