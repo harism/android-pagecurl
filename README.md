@@ -8,8 +8,7 @@ exceptions, let it be as-is implementation or - maybe more preferably - as an ex
 
 ToDo
 ====
-* Fix drop shadow calculation as now there's overlapping with page surface in some situations. Additionally in some cases drop shadow polygons overlap each other making it almost black. 
-* Adjust fake self shadow calculation. 
+* Adjust fake soft shadow calculation. It's an endless road..
 * Add some details to make it a bit more book alike.
 
 Some details
