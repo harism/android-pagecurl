@@ -266,6 +266,19 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	}
 	
 	/**
+	 * Set initial page index.  Allows developer to set the initial page to display.
+	 */
+	public void setCurrentIndex(int index){
+		if(mBitmapProvider == null || index <=0){
+			mCurrentIndex = 0;
+		}else if(index < mBitmapProvider.getBitmapCount()){
+			mCurrentIndex = index;
+		}else{
+			mCurrentIndex = mBitmapProvider.getBitmapCount()-1;
+		}
+	}
+	
+	/**
 	 * Display/Hide left page
 	 */
 	public void displayLeftPage(boolean displayLeftPage){
@@ -479,7 +492,6 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		mRenderer.removeCurlMesh(mPageLeft);
 		mRenderer.removeCurlMesh(mPageRight);
 		mRenderer.removeCurlMesh(mPageCurl);
-
 		if (mCurrentIndex >= 0
 				&& mCurrentIndex < mBitmapProvider.getBitmapCount()) {
 			Bitmap bitmap = mBitmapProvider.getBitmap(mBitmapWidth,
