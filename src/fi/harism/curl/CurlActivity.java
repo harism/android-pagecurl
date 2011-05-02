@@ -23,6 +23,9 @@ public class CurlActivity extends Activity {
 		setContentView(R.layout.main);
 		mCurlView = (CurlView) findViewById(R.id.curl);
 		mCurlView.setBitmapProvider(new BitmapProvider());
+		//mCurlView.onLandscapeShowTwoPages(false); //false will force one page mode in landscape
+		//mCurlView.displayLeftPage(false); //false hide the left page in one page mode
+		//mCurlView.allowLastPageCurl(false); //false will prevent the last page from turning.
 	}
 
 	@Override
