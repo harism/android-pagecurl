@@ -20,13 +20,13 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 
 	public static final int SHOW_ONE_PAGE = 1;
 	public static final int SHOW_TWO_PAGES = 2;
+	private int mViewMode = SHOW_ONE_PAGE;
 
 	public static final int PAGE_LEFT = 1;
 	public static final int PAGE_RIGHT = 2;
 
 	private static final boolean USE_PERSPECTIVE_PROJECTION = false;
 
-	private int mViewMode = SHOW_ONE_PAGE;
 	// Rect for render area.
 	private RectF mViewRect = new RectF();
 	private RectF mMargins = new RectF();
@@ -44,8 +44,6 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 
 	private RectF mPageRectLeft;
 	private RectF mPageRectRight;
-	
-	private boolean displayLeftPage = true; //Only effects SHOW_ONE_PAGE
 
 	/**
 	 * Basic constructor.
@@ -77,13 +75,6 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		return null;
 	}
 
-	/**
-	 * Getter for current view mode.
-	 */
-	public int getViewMode() {
-		return mViewMode;
-	}
-	
 	@Override
 	public synchronized void onDrawFrame(GL10 gl) {
 		if (mBackgroundColorChanged) {
@@ -136,7 +127,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 
 	@Override
 	public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-		setBackgroundColor(0xFF303030);
+		gl.glClearColor(0f, 0f, 0f, 1f);
 		gl.glShadeModel(GL10.GL_SMOOTH);
 		gl.glHint(GL10.GL_PERSPECTIVE_CORRECTION_HINT, GL10.GL_NICEST);
 		gl.glHint(GL10.GL_LINE_SMOOTH_HINT, GL10.GL_NICEST);
@@ -160,13 +151,6 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	public void setBackgroundColor(int color) {
 		mBackgroundColor = color;
 		mBackgroundColorChanged = true;
-	}
-
-	/**
-	 * Display/Hide left page
-	 */
-	public void setDisplayLeftPage(boolean displayLeftPage){
-		this.displayLeftPage = displayLeftPage;
 	}
 
 	/**
@@ -217,8 +201,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 			mPageRectRight.bottom -= mViewRect.height() * mMargins.bottom;
 
 			mPageRectLeft.set(mPageRectRight);
-			//TODO: displayLeftPage is just forcing the LEFT page way over to the right if (false), it might be better not to render the left page at all.
-			mPageRectLeft.offset(-(mPageRectRight.width()*(displayLeftPage ? 1 : 2)), 0);
+			mPageRectLeft.offset(-mPageRectRight.width(), 0);
 
 			int bitmapW = (int) ((mPageRectRight.width() * mViewportWidth) / mViewRect
 					.width());

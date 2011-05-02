@@ -17,30 +17,29 @@ public class CurlActivity extends Activity {
 
 	private CurlView mCurlView;
 
-	//Called when the activity is first created.
+	// Called when the activity is first created.
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
-		
-	  	int index = 0;
-	  	if (getLastNonConfigurationInstance() != null) {
-	  		index = (Integer)getLastNonConfigurationInstance();
-	  	}
+
+		int index = 0;
+		if (getLastNonConfigurationInstance() != null) {
+			index = (Integer) getLastNonConfigurationInstance();
+		}
 		mCurlView = (CurlView) findViewById(R.id.curl);
 		mCurlView.setBitmapProvider(new BitmapProvider());
+		mCurlView.setSizeChangedObserver(new SizeChangedObserver());
 		mCurlView.setCurrentIndex(index);
-		//mCurlView.onLandscapeShowTwoPages(false); //false will force one page mode in landscape
-		//mCurlView.displayLeftPage(false); //false hide the left page in one page mode
-		//mCurlView.allowLastPageCurl(false); //false will prevent the last page from turning.
+		mCurlView.setBackgroundColor(0xFF202830);
 	}
-	
+
 	@Override
 	public void onPause() {
 		super.onPause();
 		mCurlView.onPause();
 	}
-	
+
 	@Override
 	public void onResume() {
 		super.onResume();
@@ -51,11 +50,11 @@ public class CurlActivity extends Activity {
 	public Object onRetainNonConfigurationInstance() {
 		return mCurlView.getCurrentIndex();
 	}
-	
+
 	/**
 	 * Bitmap provider.
 	 */
-	private class BitmapProvider implements CurlBitmapProvider {
+	private class BitmapProvider implements CurlView.BitmapProvider {
 
 		private int[] mBitmapIds = { R.drawable.obama, R.drawable.road_rage,
 				R.drawable.taipei_101, R.drawable.world };
@@ -102,6 +101,22 @@ public class CurlActivity extends Activity {
 		@Override
 		public int getBitmapCount() {
 			return mBitmapIds.length;
+		}
+	}
+
+	/**
+	 * CurlView size changed observer.
+	 */
+	private class SizeChangedObserver implements CurlView.SizeChangedObserver {
+		@Override
+		public void onSizeChanged(int w, int h) {
+			if (w > h) {
+				mCurlView.setViewMode(CurlView.SHOW_TWO_PAGES);
+				mCurlView.setMargins(.1f, .05f, .1f, .05f);
+			} else {
+				mCurlView.setViewMode(CurlView.SHOW_ONE_PAGE);
+				mCurlView.setMargins(.1f, .1f, .1f, .1f);
+			}
 		}
 	}
 
