@@ -1,7 +1,6 @@
 package fi.harism.curl;
 
 import android.app.Activity;
-import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
@@ -18,11 +17,15 @@ public class CurlActivity extends Activity {
 
 	private CurlView mCurlView;
 
-	//used in onCreate() and onConfigurationChanged() to set up the UI elements
-	public void initializeUI() {
+	//Called when the activity is first created.
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.main);
+		
 	  	int index = 0;
-	  	if(mCurlView != null){
-	  		index = mCurlView.getCurrentIndex();
+	  	if (getLastNonConfigurationInstance() != null) {
+	  		index = (Integer)getLastNonConfigurationInstance();
 	  	}
 		mCurlView = (CurlView) findViewById(R.id.curl);
 		mCurlView.setBitmapProvider(new BitmapProvider());
@@ -30,37 +33,23 @@ public class CurlActivity extends Activity {
 		//mCurlView.onLandscapeShowTwoPages(false); //false will force one page mode in landscape
 		//mCurlView.displayLeftPage(false); //false hide the left page in one page mode
 		//mCurlView.allowLastPageCurl(false); //false will prevent the last page from turning.
-	}	
-	
-	//Called when the activity is first created.
-	@Override
-	public void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
-		setContentView(R.layout.main);
-
-		initializeUI();
 	}
 	
-	//this is called when the screen rotates.
-	// (onCreate is no longer called when screen rotates due to manifest, see: android:configChanges in AndroidManifest.xml)
-	@Override
-	public void onConfigurationChanged(Configuration newConfig) {
-	  	super.onConfigurationChanged(newConfig);
-	  	setContentView(R.layout.main);
-
-		initializeUI();
-	}
-
 	@Override
 	public void onPause() {
 		super.onPause();
 		mCurlView.onPause();
 	}
-
+	
 	@Override
 	public void onResume() {
 		super.onResume();
 		mCurlView.onResume();
+	}
+
+	@Override
+	public Object onRetainNonConfigurationInstance() {
+		return mCurlView.getCurrentIndex();
 	}
 	
 	/**
