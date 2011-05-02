@@ -101,9 +101,15 @@ public class CurlMesh {
 			}
 		}
 
+		// Rectangle consists of 4 vertices. Index 0 = top-left, index 1 =
+		// bottom-left, index 2 = top-right and index 3 = bottom-right.
 		for (int i = 0; i < 4; ++i) {
 			mRectangle[i] = new Vertex();
 		}
+		// Set up shadow penumbra direction to each vertex. We do fake 'self
+		// shadow' calculations based on this information.
+		mRectangle[0].mPenumbraX = mRectangle[1].mPenumbraX = mRectangle[1].mPenumbraY = mRectangle[3].mPenumbraY = -1;
+		mRectangle[0].mPenumbraY = mRectangle[2].mPenumbraX = mRectangle[2].mPenumbraY = mRectangle[3].mPenumbraX = 1;
 
 		if (DRAW_HELPERS) {
 			mHelperLinesCount = 3;
@@ -227,7 +233,7 @@ public class CurlMesh {
 		// 0 and 1. But due to inaccuracy it's possible vertex 3 is not the
 		// opposing corner from vertex 0. So we are calculating distance from
 		// vertex 0 to vertices 2 and 3 - and altering line indices if needed.
-		int lines[][] = { {0, 1}, {0, 2}, {1, 3}, {2, 3} };
+		int lines[][] = { { 0, 1 }, { 0, 2 }, { 1, 3 }, { 2, 3 } };
 		{
 			Vertex v0 = mRotatedVertices.get(0);
 			Vertex v2 = mRotatedVertices.get(2);
@@ -322,6 +328,7 @@ public class CurlMesh {
 				else if (i == mScanLines.size() - 1 || curlLength == 0) {
 					v.mPosX = -(curlLength + v.mPosX);
 					v.mPosZ = 2 * radius;
+					v.mPenumbraX = -v.mPenumbraX;
 
 					v.mAlpha = mSwapAlpha ? FRONTFACE_ALPHA : BACKFACE_ALPHA;
 					mVerticesCountBack++;
@@ -335,6 +342,7 @@ public class CurlMesh {
 					double rotY = Math.PI * (v.mPosX / curlLength);
 					v.mPosX = radius * Math.sin(rotY);
 					v.mPosZ = radius - (radius * Math.cos(rotY));
+					v.mPenumbraX *= Math.cos(rotY);
 					// Map color multiplier to [.1f, 1f] range.
 					v.mColor = .1f + .9f * Math.sqrt(Math.sin(rotY) + 1);
 
@@ -362,21 +370,19 @@ public class CurlMesh {
 					sv.mPosZ = v.mPosZ;
 					sv.mPenumbraX = (v.mPosZ / 2) * -directionVec.x;
 					sv.mPenumbraY = (v.mPosZ / 2) * -directionVec.y;
-					sv.mPenumbraInnerColor = v.mPosZ / radius;
+					sv.mPenumbraColor = v.mPosZ / radius;
 					int idx = (mDropShadowVertices.size() + 1) / 2;
 					mDropShadowVertices.add(idx, sv);
 				}
 				// Self shadow is cast partly over mesh.
 				if (DRAW_SHADOW && v.mPosZ > radius) {
-					// TODO: Shadow penumbra direction is not good, shouldn't be
-					// calculated using only directionVec.
 					ShadowVertex sv = mTempShadowVertices.remove(0);
 					sv.mPosX = v.mPosX;
 					sv.mPosY = v.mPosY;
 					sv.mPosZ = v.mPosZ;
-					sv.mPenumbraX = ((v.mPosZ - radius) / 2) * directionVec.x;
-					sv.mPenumbraY = ((v.mPosZ - radius) / 2) * directionVec.y;
-					sv.mPenumbraInnerColor = (v.mPosZ - radius) / radius;
+					sv.mPenumbraX = ((v.mPosZ - radius) / 3) * v.mPenumbraX;
+					sv.mPenumbraY = ((v.mPosZ - radius) / 3) * v.mPenumbraY;
+					sv.mPenumbraColor = (v.mPosZ - radius) / (2 * radius);
 					int idx = (mSelfShadowVertices.size() + 1) / 2;
 					mSelfShadowVertices.add(idx, sv);
 				}
@@ -408,7 +414,7 @@ public class CurlMesh {
 				for (int j = 0; j < 4; ++j) {
 					double color = SHADOW_OUTER_COLOR[j]
 							+ (SHADOW_INNER_COLOR[j] - SHADOW_OUTER_COLOR[j])
-							* sv.mPenumbraInnerColor;
+							* sv.mPenumbraColor;
 					mShadowColors.put((float) color);
 				}
 				mShadowColors.put(SHADOW_OUTER_COLOR);
@@ -426,7 +432,7 @@ public class CurlMesh {
 				for (int j = 0; j < 4; ++j) {
 					double color = SHADOW_OUTER_COLOR[j]
 							+ (SHADOW_INNER_COLOR[j] - SHADOW_OUTER_COLOR[j])
-							* sv.mPenumbraInnerColor;
+							* sv.mPenumbraColor;
 					mShadowColors.put((float) color);
 				}
 				mShadowColors.put(SHADOW_OUTER_COLOR);
@@ -657,6 +663,10 @@ public class CurlMesh {
 					n.mTexX += (v1.mTexX - v2.mTexX) * c;
 					n.mTexY += (v1.mTexY - v2.mTexY) * c;
 				}
+				if (DRAW_SHADOW) {
+					n.mPenumbraX += (v1.mPenumbraX - v2.mPenumbraX) * c;
+					n.mPenumbraY += (v1.mPenumbraY - v2.mPenumbraY) * c;
+				}
 				mIntersections.add(n);
 			}
 		}
@@ -764,7 +774,7 @@ public class CurlMesh {
 		public double mPosZ;
 		public double mPenumbraX;
 		public double mPenumbraY;
-		public double mPenumbraInnerColor;
+		public double mPenumbraColor;
 	}
 
 	/**
@@ -776,6 +786,8 @@ public class CurlMesh {
 		public double mPosZ;
 		public double mTexX;
 		public double mTexY;
+		public double mPenumbraX;
+		public double mPenumbraY;
 		public double mColor;
 		public double mAlpha;
 
@@ -791,6 +803,10 @@ public class CurlMesh {
 			double y = mPosX * -sin + mPosY * cos;
 			mPosX = x;
 			mPosY = y;
+			double px = mPenumbraX * cos + mPenumbraY * sin;
+			double py = mPenumbraX * -sin + mPenumbraY * cos;
+			mPenumbraX = px;
+			mPenumbraY = py;
 		}
 
 		public void set(Vertex vertex) {
@@ -799,6 +815,8 @@ public class CurlMesh {
 			mPosZ = vertex.mPosZ;
 			mTexX = vertex.mTexX;
 			mTexY = vertex.mTexY;
+			mPenumbraX = vertex.mPenumbraX;
+			mPenumbraY = vertex.mPenumbraY;
 			mColor = vertex.mColor;
 			mAlpha = vertex.mAlpha;
 		}
