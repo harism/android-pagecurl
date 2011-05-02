@@ -59,6 +59,10 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 
 	private boolean onLandscapeTwoPage = true;
 	private boolean allowLastPageCurl = true;
+	private float leftMargin = .05f;
+	private float topMargin = .05f;
+	private float rightMargin = .05f;
+	private float bottomMargin = .05f;
 	
 	/**
 	 * Default constructor.
@@ -150,11 +154,10 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 
 		if (h > w || !onLandscapeTwoPage) {
 			mRenderer.setViewMode(CurlRenderer.SHOW_ONE_PAGE);
-			mRenderer.setMargins(.05f, .05f, .05f, .05f);
 		} else {
 			mRenderer.setViewMode(CurlRenderer.SHOW_TWO_PAGES);
-			mRenderer.setMargins(.1f, .05f, .1f, .05f);
 		}
+		mRenderer.setMargins(leftMargin, topMargin, rightMargin, bottomMargin);
 
 		requestRender();
 	}
@@ -256,6 +259,17 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		}
 
 		return true;
+	}
+	
+	/**
+	 * Set margins or padding. Note: margins are proportional. Meaning a value
+	 * of .1f will produce a 10% margin.
+	 */
+	public synchronized void setMargins(float left, float top, float right, float bottom) {
+		leftMargin = left;
+		topMargin = top;
+		rightMargin = right;
+		bottomMargin = bottom;
 	}
 	
 	/**
