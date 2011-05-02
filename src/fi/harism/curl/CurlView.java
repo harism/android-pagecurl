@@ -57,6 +57,13 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	private static final RectF TEXTURE_RECT_FRONT = new RectF(0, 0, 1, 1);
 	private static final RectF TEXTURE_RECT_BACK = new RectF(1, 0, 0, 1);
 
+	private boolean onLandscapeTwoPage = true;
+	private boolean allowLastPageCurl = true;
+	private float leftMargin = .05f;
+	private float topMargin = .05f;
+	private float rightMargin = .05f;
+	private float bottomMargin = .05f;
+	
 	/**
 	 * Default constructor.
 	 */
@@ -145,13 +152,12 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	public void onSizeChanged(int w, int h, int ow, int oh) {
 		super.onSizeChanged(w, h, ow, oh);
 
-		if (h > w) {
+		if (h > w || !onLandscapeTwoPage) {
 			mRenderer.setViewMode(CurlRenderer.SHOW_ONE_PAGE);
-			mRenderer.setMargins(.05f, .05f, .05f, .05f);
 		} else {
 			mRenderer.setViewMode(CurlRenderer.SHOW_TWO_PAGES);
-			mRenderer.setMargins(.1f, .05f, .1f, .05f);
 		}
+		mRenderer.setMargins(leftMargin, topMargin, rightMargin, bottomMargin);
 
 		requestRender();
 	}
@@ -162,8 +168,8 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		// TODO: Stop animation on touch event and return to drag mode.
 		if (mAnimate) {
 			return false;
-		}
-
+		}		
+		
 		RectF rightRect = mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT);
 		RectF leftRect = mRenderer.getPageRect(CurlRenderer.PAGE_LEFT);
 		mPointerPos.x = me.getX();
@@ -177,6 +183,11 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		} else if (mRenderer.getViewMode() == CurlRenderer.SHOW_TWO_PAGES
 				&& mPointerPos.x < leftRect.left) {
 			mPointerPos.x = leftRect.left;
+		}
+
+		//Prevent a right page curl if the touch is on the last page and allowLastPageCurl is false.
+		if(!allowLastPageCurl && mCurrentIndex == mBitmapProvider.getBitmapCount()-1 && mCurlState != CURL_LEFT && mPointerPos.x > 0){
+			return false;
 		}
 
 		switch (me.getAction()) {
@@ -249,6 +260,59 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 
 		return true;
 	}
+	
+	/**
+	 * Set margins or padding. Note: margins are proportional. Meaning a value
+	 * of .1f will produce a 10% margin.
+	 */
+	public synchronized void setMargins(float left, float top, float right, float bottom) {
+		leftMargin = left;
+		topMargin = top;
+		rightMargin = right;
+		bottomMargin = bottom;
+	}
+	
+	/**
+	 * Set wither to allow two page view in landscape mode
+	 */
+	public void onLandscapeShowTwoPages(boolean onLandscapeTwoPage){
+		this.onLandscapeTwoPage = onLandscapeTwoPage;
+	}
+	
+	/**
+	 * Set current page index.
+	 */
+	public int getCurrentIndex(){
+		return mCurrentIndex;
+	}
+	
+	/**
+	 * Set page index.
+	 */
+	public void setCurrentIndex(int index){
+		if(mBitmapProvider == null || index <=0){
+			mCurrentIndex = 0;
+		}else if(index < mBitmapProvider.getBitmapCount()){
+			mCurrentIndex = index;
+		}else{
+			mCurrentIndex = mBitmapProvider.getBitmapCount()-1;
+		}
+		refreshRender();
+	}
+	
+	/**
+	 * Display/Hide left page
+	 */
+	public void displayLeftPage(boolean displayLeftPage){
+		mRenderer.setDisplayLeftPage(displayLeftPage);
+	}
+
+	/**
+	 * Allow the last page to curl
+	 */
+	public void allowLastPageCurl(boolean allowLastPageCurl){
+		this.allowLastPageCurl = allowLastPageCurl;
+	}	
 
 	/**
 	 * Update/set bitmap provider.
@@ -256,10 +320,17 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	public void setBitmapProvider(CurlBitmapProvider bitmapProvider) {
 		mBitmapProvider = bitmapProvider;
 		mCurrentIndex = 0;
-		updateBitmaps();
-		requestRender();
+		refreshRender();
 	}
-
+	
+	/**
+	 * refresh the render (on device rotation, etc.)
+	 */
+	public void refreshRender(){
+		updateBitmaps();
+		requestRender();		
+	}
+	
 	/**
 	 * Initialize method.
 	 */
@@ -450,7 +521,6 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		mRenderer.removeCurlMesh(mPageLeft);
 		mRenderer.removeCurlMesh(mPageRight);
 		mRenderer.removeCurlMesh(mPageCurl);
-
 		if (mCurrentIndex >= 0
 				&& mCurrentIndex < mBitmapProvider.getBitmapCount()) {
 			Bitmap bitmap = mBitmapProvider.getBitmap(mBitmapWidth,
