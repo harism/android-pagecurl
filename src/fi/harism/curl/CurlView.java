@@ -251,9 +251,17 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		case MotionEvent.ACTION_UP: {
 			if (mCurlState == CURL_LEFT || mCurlState == CURL_RIGHT) {
 				// Animation source is the point from where animation starts.
+				// Also it's handled in a way we actually simulate touch events
+				// meaning the output is exactly the same as if user drags the
+				// page to other side. While not producing the best looking
+				// result (which is easier done by altering curl position and/or
+				// direction directly), this is done in a hope it made code a
+				// bit more readable and easier to maintain.
 				mAnimationSource.set(mPointerPos);
 				mAnimationStartTime = System.currentTimeMillis();
 
+				// Given the explanation, here we decide whether to simulate
+				// drag to left or right end.
 				if ((mViewMode == SHOW_ONE_PAGE && mPointerPos.x > (rightRect.left + rightRect.right) / 2)
 						|| mViewMode == SHOW_TWO_PAGES
 						&& mPointerPos.x > rightRect.left) {
@@ -283,7 +291,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	}
 
 	/**
-	 * Allow the last page to curl
+	 * Allow the last page to curl.
 	 */
 	public void setAllowLastPageCurl(boolean allowLastPageCurl) {
 		mAllowLastPageCurl = allowLastPageCurl;
@@ -291,11 +299,13 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 
 	/**
 	 * Sets background color - or OpenGL clear color to be more precise. Color
-	 * is a 32bit value consisting of 0xAARRGGBB.
+	 * is a 32bit value consisting of 0xAARRGGBB and is extracted using
+	 * android.graphics.Color eventually.
 	 */
 	@Override
 	public void setBackgroundColor(int color) {
 		mRenderer.setBackgroundColor(color);
+		requestRender();
 	}
 
 	/**
@@ -395,6 +405,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			RectF pageRect = mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT);
 			if (curlPos.x < pageRect.left) {
 				curlPos.x = pageRect.left;
+				curlDir.y = 0;
 			}
 			if (curlDir.y != 0) {
 				float diffX = curlPos.x - pageRect.left;
@@ -411,6 +422,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			RectF pageRect = mRenderer.getPageRect(CurlRenderer.PAGE_LEFT);
 			if (curlPos.x > pageRect.right) {
 				curlPos.x = pageRect.right;
+				curlDir.y = 0;
 			}
 			if (curlDir.y != 0) {
 				float diffX = curlPos.x - pageRect.right;
@@ -655,7 +667,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 
 			// Adjust radius regarding how close to page edge we are.
 			float pageLeftX = mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT).left;
-			radius = Math.min(mCurlPos.x - pageLeftX, radius);
+			radius = Math.max(Math.min(mCurlPos.x - pageLeftX, radius), 0f);
 
 			float pageRightX = mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT).right;
 			mCurlPos.x -= Math.min(pageRightX - mCurlPos.x, radius);
