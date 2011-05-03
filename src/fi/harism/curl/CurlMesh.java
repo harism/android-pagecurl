@@ -583,6 +583,14 @@ public class CurlMesh {
 	}
 
 	/**
+	 * Resets allocated texture id forcing creation of new one. After calling
+	 * this method you most likely want to set bitmap too as it's lost.
+	 */
+	public synchronized void resetTexture() {
+		mTextureIds = null;
+	}
+
+	/**
 	 * Sets new texture for this mesh.
 	 */
 	public void setBitmap(Bitmap bitmap) {
