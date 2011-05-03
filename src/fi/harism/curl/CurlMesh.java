@@ -475,18 +475,19 @@ public class CurlMesh {
 		}
 
 		// Some 'global' settings.
-		gl.glEnable(GL10.GL_BLEND);
 		gl.glEnableClientState(GL10.GL_VERTEX_ARRAY);
 
 		// TODO: Drop shadow drawing is done temporarily here to hide some
 		// problems with its calculation.
 		if (DRAW_SHADOW) {
+			gl.glEnable(GL10.GL_BLEND);
 			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
 			gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
 			gl.glColorPointer(4, GL10.GL_FLOAT, 0, mShadowColors);
 			gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mShadowVertices);
 			gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, mDropShadowCount);
 			gl.glDisableClientState(GL10.GL_COLOR_ARRAY);
+			gl.glDisable(GL10.GL_BLEND);
 		}
 
 		// Enable texture coordinates.
@@ -501,52 +502,60 @@ public class CurlMesh {
 		gl.glColorPointer(4, GL10.GL_FLOAT, 0, mColors);
 
 		// Draw blank / 'white' front facing vertices.
-		gl.glBlendFunc(GL10.GL_ONE, GL10.GL_ZERO);
 		gl.glDisable(GL10.GL_TEXTURE_2D);
 		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, mVerticesCountFront);
 		// Draw front facing texture.
+		// TODO: Decide whether it's really needed to have alpha blending to
+		// page background for front facing texture. If not, GL_BLEND isn't
+		// needed, possibly increasing performance.
 		if (DRAW_TEXTURE) {
+			gl.glEnable(GL10.GL_BLEND);
 			gl.glEnable(GL10.GL_TEXTURE_2D);
 			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
 			gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, mVerticesCountFront);
 			gl.glDisable(GL10.GL_TEXTURE_2D);
+			gl.glDisable(GL10.GL_BLEND);
 		}
 		int backStartIdx = Math.max(0, mVerticesCountFront - 2);
 		int backCount = mVerticesCountFront + mVerticesCountBack - backStartIdx;
 		// Draw blank / 'white' back facing vertices.
-		gl.glBlendFunc(GL10.GL_ONE, GL10.GL_ZERO);
 		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, backStartIdx, backCount);
 		// Draw back facing texture.
 		if (DRAW_TEXTURE) {
+			gl.glEnable(GL10.GL_BLEND);
 			gl.glEnable(GL10.GL_TEXTURE_2D);
 			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
 			gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, backStartIdx, backCount);
 			gl.glDisable(GL10.GL_TEXTURE_2D);
+			gl.glDisable(GL10.GL_BLEND);
 		}
 
 		// Disable textures and color array.
 		gl.glDisableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
 		gl.glDisableClientState(GL10.GL_COLOR_ARRAY);
 
-		if (DRAW_POLYGON_OUTLINES || DRAW_HELPERS) {
-			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
-			gl.glEnable(GL10.GL_LINE_SMOOTH);
-			gl.glLineWidth(1.0f);
-		}
-
 		if (DRAW_POLYGON_OUTLINES) {
+			gl.glEnable(GL10.GL_BLEND);
+			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
+			gl.glLineWidth(1.0f);
 			gl.glColor4f(0.5f, 0.5f, 1.0f, 1.0f);
 			gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mVertices);
 			gl.glDrawArrays(GL10.GL_LINE_STRIP, 0, mVerticesCountFront);
+			gl.glDisable(GL10.GL_BLEND);
 		}
 
 		if (DRAW_HELPERS) {
+			gl.glEnable(GL10.GL_BLEND);
+			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
+			gl.glLineWidth(1.0f);
 			gl.glColor4f(1.0f, 0.5f, 0.5f, 1.0f);
 			gl.glVertexPointer(2, GL10.GL_FLOAT, 0, mHelperLines);
 			gl.glDrawArrays(GL10.GL_LINES, 0, mHelperLinesCount * 2);
+			gl.glDisable(GL10.GL_BLEND);
 		}
 
 		if (DRAW_SHADOW) {
+			gl.glEnable(GL10.GL_BLEND);
 			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
 			gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
 			gl.glColorPointer(4, GL10.GL_FLOAT, 0, mShadowColors);
@@ -554,6 +563,7 @@ public class CurlMesh {
 			gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, mDropShadowCount,
 					mSelfShadowCount);
 			gl.glDisableClientState(GL10.GL_COLOR_ARRAY);
+			gl.glDisable(GL10.GL_BLEND);
 		}
 
 		gl.glDisableClientState(GL10.GL_VERTEX_ARRAY);
