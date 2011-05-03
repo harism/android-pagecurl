@@ -77,6 +77,9 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 
 	@Override
 	public synchronized void onDrawFrame(GL10 gl) {
+
+		mObserver.onDrawFrame();
+
 		if (mBackgroundColorChanged) {
 			gl.glClearColor(Color.red(mBackgroundColor) / 255f,
 					Color.green(mBackgroundColor) / 255f,
@@ -95,8 +98,6 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		for (int i = 0; i < mCurlMeshes.size(); ++i) {
 			mCurlMeshes.get(i).draw(gl);
 		}
-
-		mObserver.onRenderDone();
 	}
 
 	@Override
@@ -135,6 +136,8 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		gl.glEnable(GL10.GL_LINE_SMOOTH);
 		gl.glDisable(GL10.GL_DEPTH_TEST);
 		gl.glDisable(GL10.GL_CULL_FACE);
+
+		mObserver.onSurfaceCreated();
 	}
 
 	/**
@@ -207,7 +210,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 					.width());
 			int bitmapH = (int) ((mPageRectRight.height() * mViewportHeight) / mViewRect
 					.height());
-			mObserver.onBitmapSizeChanged(bitmapW, bitmapH);
+			mObserver.onPageSizeChanged(bitmapW, bitmapH);
 		} else if (mViewMode == SHOW_TWO_PAGES) {
 			mPageRectRight.set(mViewRect);
 			mPageRectRight.left += mViewRect.width() * mMargins.left;
@@ -223,7 +226,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 					.width());
 			int bitmapH = (int) ((mPageRectRight.height() * mViewportHeight) / mViewRect
 					.height());
-			mObserver.onBitmapSizeChanged(bitmapW, bitmapH);
+			mObserver.onPageSizeChanged(bitmapW, bitmapH);
 		}
 	}
 
@@ -232,15 +235,21 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	 */
 	public interface Observer {
 		/**
+		 * Called from onDrawFrame called before rendering is started. This is
+		 * intended to be used for animation purposes.
+		 */
+		public void onDrawFrame();
+
+		/**
 		 * Called once page size is changed. Width and height tell the page size
 		 * in pixels making it possible to update textures accordingly.
 		 */
-		public void onBitmapSizeChanged(int width, int height);
+		public void onPageSizeChanged(int width, int height);
 
 		/**
-		 * Call back method from onDrawFrame called after rendering frame is
-		 * done. This is intended to be used for animation purposes.
+		 * Called from onSurfaceCreated to enable texture re-initialization etc
+		 * what needs to be done when this happens.
 		 */
-		public void onRenderDone();
+		public void onSurfaceCreated();
 	}
 }
