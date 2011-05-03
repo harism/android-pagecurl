@@ -51,7 +51,8 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	private PointF mPointerPos = new PointF();
 	private PointF mCurlPos = new PointF();
 	private PointF mCurlDir = new PointF();
-
+	
+	private float mDoPageTurnCurlPercent = .2f;
 	private boolean mAnimate = false;
 	private PointF mAnimationSource = new PointF();
 	private PointF mAnimationTarget = new PointF();
@@ -244,24 +245,30 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 				mAnimationSource.set(mPointerPos);
 				mAnimationStartTime = System.currentTimeMillis();
 
-				if ((mViewMode == SHOW_ONE_PAGE && mPointerPos.x > (rightRect.left + rightRect.right) / 2)
-						|| mViewMode == SHOW_TWO_PAGES
-						&& mPointerPos.x > rightRect.left) {
-					// On right side target is always right page's right border.
-					mAnimationTarget.set(mDragStartPos);
-					mAnimationTarget.x = mRenderer
-							.getPageRect(CurlRenderer.PAGE_RIGHT).right;
+				//Find mDoPageTurnCurlPercent in terms of position
+				float curlPointModifier = rightRect.width();
+				if(mViewMode == SHOW_TWO_PAGES){
+					curlPointModifier += leftRect.width();
+				}
+				curlPointModifier *= mDoPageTurnCurlPercent;
+			
+				mAnimationTarget.set(mDragStartPos);
+				//Page turn animation will now occur if a curl drag has reached a certain percentage before release.
+				if (mCurlState == CURL_RIGHT && mPointerPos.x > rightRect.right - curlPointModifier) {
+					mAnimationTarget.x = rightRect.right;
 					mAnimationTargetEvent = SET_CURL_TO_RIGHT;
-				} else {
-					// On left side target depends on visible pages.
-					mAnimationTarget.set(mDragStartPos);
-					if (mCurlState == CURL_RIGHT || mViewMode == SHOW_TWO_PAGES) {
+				} else if ((mCurlState == CURL_LEFT && mPointerPos.x < (mViewMode == SHOW_TWO_PAGES ? leftRect.left : rightRect.left) + curlPointModifier) || mCurlState == CURL_RIGHT) {
+					if (mViewMode == SHOW_TWO_PAGES) {
 						mAnimationTarget.x = leftRect.left;
 					} else {
 						mAnimationTarget.x = rightRect.left;
 					}
 					mAnimationTargetEvent = SET_CURL_TO_LEFT;
+				} else {
+					mAnimationTarget.x = rightRect.right;
+					mAnimationTargetEvent = SET_CURL_TO_RIGHT;
 				}
+ 
 				mAnimate = true;
 				requestRender();
 			}
@@ -270,6 +277,13 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		}
 
 		return true;
+	}
+	
+	/*
+	 * Set the percentage a curl drag must reach before release, for a turn to be complete
+	 */
+	public void setDoPageTurnCurlPercent(float doPageTurnCurlPercent){
+		mDoPageTurnCurlPercent = doPageTurnCurlPercent;
 	}
 
 	/**
