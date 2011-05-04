@@ -2,9 +2,13 @@ Introduction
 ============
 Project for implementing 'page curl' effect on Android + OpenGL ES 1.0 (possibly 1.1/2.0 too if there's clear advantage in using them).
 Feel free to use everything found here on what ever purpose you can imagine of. With the exception of
-images I'm using as example they are randomly selected from Google Images. And application icon is borrowed
+images I'm using as example as they are randomly selected from Google Images. And application icon is borrowed
 from [deviantART](http://browse.deviantart.com/customization/icons/dock/#/dz0w8n). Besides these
-exceptions, let it be as-is implementation or - maybe more preferably - as an example for implementing your own effect.
+exceptions, let it be as-is implementation or - maybe more preferably - as an example for implementing your own effect.<br>
+<br>
+Ps. If you still feel I'm breaking your intellectual rights it's absolutely unintentional.
+I did some research using Google and checked a bunch of videos found on YouTube but never visited www.upsto.gov.
+In such case please do drop me an email - instead of suing without a blink - ok?
 
 ToDo
 ====
@@ -17,10 +21,10 @@ Implementation can be divided roughly in two parts.
 
 * CurlMesh - which handles actual curl calculations and everything related to its rendering.
 * CurlView - which is responsible for providing rendering environment - but more importantly -
-handles curl manipulation. Meaning it receives touch events and repositions curl based on it.
+handles curl manipulation. Meaning it receives touch events and repositions curl based on them.
 While this sounds something utterly trivial, it really isn't, and becomes more complex if curl didn't happen
 around a cylinder. Depending on what you're trying to achieve of course. For me it was
-most important from the beginning that 'paper edge' follows cursor at all times.
+most important from the beginning that 'paper edge' follows pointer at all times.
 
 Anyway, here are a few links describing this page curl implementation somewhat well.
 Only difference is that instead of using a static grid I implemented an algorithm
@@ -79,6 +83,6 @@ Some YouTube links to page curl/flip implementations I've found interesting for 
 
 Not to forget some of my real time rendering heros. One day I'm beating them all. One day.
 
-* [Rgba&Tbc - Elevated](http://pouet.net/prod.php?which=52938) [http://www.youtube.com/watch?v=_YWMGuh15nE]
-* [Andromeda&Orb - Stargazer](http://pouet.net/prod.php?which=51438) [http://www.youtube.com/watch?v=5u1cqYLNbJI]
-* [Cncd&Flt - Numb Res](http://pouet.net/prod.php?which=56900) [http://www.youtube.com/watch?v=LTOC_ajkRkU]
+* Rgba&Tbc - Elevated [http://www.youtube.com/watch?v=_YWMGuh15nE]
+* Andromeda&Orb - Stargazer [http://www.youtube.com/watch?v=5u1cqYLNbJI]
+* Cncd&Flt - Numb Res [http://www.youtube.com/watch?v=LTOC_ajkRkU]
