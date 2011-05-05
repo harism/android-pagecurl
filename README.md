@@ -43,8 +43,9 @@ curl it to some direction. If you fold paper completely, cylinder, curl happens 
 radius becomes zero, making it more of a 2D effect. And likewise folding the paper so
 that curl radius is constant most of the characteristics remain - most importantly there
 is a line - at center of this 'cylinder' - which has constant slope not dependent on radius.
-Its distance varies only. Using such approach makes handling curl position based on touch events
-a lot easier compared to using a cone as solid curling is done around.<br/>
+Its distance from the point you're holding the paper varies only. Using such approach makes
+handling curl position based on touch events a lot easier compared to using a cone
+as solid curling is done around.<br/>
 <br/>
 Curl/cylinder is defined with three parameters, position, which is any point on a line collinear to
 curl. Direction vector which tells direction curl 'opens to'. And curl/cylinder
@@ -52,7 +53,7 @@ radius. 'Paper' is first translated and rotated; curl position translates
 to origin and then rotated so that curl opens to right (1,0). This transformation makes
 it a bit easier to calculate rotating vertices as all vertices which have x -coordinate
 at least 0 are not affected. Vertices which have x -coordinate between (-PI*radius, 0)
-are within 'curl', and if x -coordinate is less than -PI*radius they are completely rotated.
+are within 'curl', and if x -coordinate is less than equal to -PI*radius they are completely rotated.
 And scan line algorithm for splitting lines within rotating area is more simple as
 scan lines are always vertical. Not to forget rotating happens around y -axis (0, radius) as
 cylinder center is positioned at x=0. And after we translate these vertices back to
