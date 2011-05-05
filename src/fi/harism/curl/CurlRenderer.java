@@ -64,7 +64,8 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	}
 
 	/**
-	 * Returns rect reserved for left or right page.
+	 * Returns rect reserved for left or right page. Value page should be
+	 * PAGE_LEFT or PAGE_RIGHT.
 	 */
 	public RectF getPageRect(int page) {
 		if (page == PAGE_LEFT) {
@@ -170,7 +171,8 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	}
 
 	/**
-	 * Sets visible page count to one or two.
+	 * Sets visible page count to one or two. Should be either SHOW_ONE_PAGE or
+	 * SHOW_TWO_PAGES.
 	 */
 	public synchronized void setViewMode(int viewmode) {
 		if (viewmode == SHOW_ONE_PAGE) {
