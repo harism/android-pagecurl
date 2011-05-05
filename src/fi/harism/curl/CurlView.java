@@ -21,7 +21,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	public static final int SHOW_ONE_PAGE = 1;
 	// Shows two pages side by side.
 	public static final int SHOW_TWO_PAGES = 2;
-	// One page by default.
+	// One page is the default.
 	private int mViewMode = SHOW_ONE_PAGE;
 
 	private boolean mRenderLeftPage = true;
@@ -65,6 +65,8 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	private BitmapProvider mBitmapProvider;
 	private SizeChangedObserver mSizeChangedObserver;
 
+	// Texture coordinates. For flipping a page we do not alter its rectangle
+	// but flip texture instead.
 	private static final RectF TEXTURE_RECT_FRONT = new RectF(0, 0, 1, 1);
 	private static final RectF TEXTURE_RECT_BACK = new RectF(1, 0, 0, 1);
 
@@ -189,11 +191,19 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			return false;
 		}
 
+		// We need page rects quite extensively so get them for later use.
 		RectF rightRect = mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT);
 		RectF leftRect = mRenderer.getPageRect(CurlRenderer.PAGE_LEFT);
+
+		// Store pointer position.
 		mPointerPos.x = me.getX();
 		mPointerPos.y = me.getY();
 		mRenderer.translate(mPointerPos);
+
+		// Some sanity checking. While letting pointer position flow over the
+		// edge of a page sideways shouldn't be a problem, limiting it to page
+		// bounds doesn't do any harm either. Doing it once here saves some
+		// effort later on though.
 		if (mPointerPos.x > rightRect.right) {
 			mPointerPos.x = rightRect.right;
 		} else if (mViewMode == SHOW_ONE_PAGE && mPointerPos.x < rightRect.left) {
@@ -204,18 +214,34 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 
 		switch (me.getAction()) {
 		case MotionEvent.ACTION_DOWN: {
+
+			// Once we receive pointer down event its position is mapped to
+			// right or left edge of page and that'll be the position from where
+			// user is holding the paper to make curl happen.
 			mDragStartPos.set(mPointerPos);
+
+			// First we make sure it's not over or below page. Pages are
+			// supposed to be same height so it really doesn't matter do we use
+			// left or right one.
 			if (mDragStartPos.y > rightRect.top) {
 				mDragStartPos.y = rightRect.top;
 			} else if (mDragStartPos.y < rightRect.bottom) {
 				mDragStartPos.y = rightRect.bottom;
 			}
 
+			// Then we have to make decisions for the user whether curl is going
+			// to happen from left or right, and on which page.
 			if (mViewMode == SHOW_TWO_PAGES) {
-				if (mDragStartPos.x < leftRect.right && mCurrentIndex > 0) {
+				// If we have an open book and pointer is on the left from right
+				// page we'll mark drag position to left edge of left page.
+				// Additionally checking mCurrentIndex is higher than zero tells
+				// us there is a visible page at all.
+				if (mDragStartPos.x < rightRect.left && mCurrentIndex > 0) {
 					mDragStartPos.x = leftRect.left;
 					startCurl(CURL_LEFT);
-				} else if (mDragStartPos.x > rightRect.left
+				}
+				// Otherwise check pointer is on right page's side.
+				else if (mDragStartPos.x >= rightRect.left
 						&& mCurrentIndex < mBitmapProvider.getBitmapCount()) {
 					mDragStartPos.x = rightRect.right;
 					if (!mAllowLastPageCurl
@@ -241,7 +267,12 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 					startCurl(CURL_RIGHT);
 				}
 			}
-			// Let this case clause flow through to next one.
+			// If we have are in curl state, let this case clause flow through
+			// to next one. We have pointer position and drag position defined
+			// and this will create first render request given these points.
+			if (mCurlState == CURL_NONE) {
+				return false;
+			}
 		}
 		case MotionEvent.ACTION_MOVE: {
 			updateCurlPos(mPointerPos);
