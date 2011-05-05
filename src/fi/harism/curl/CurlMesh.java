@@ -19,22 +19,30 @@ import android.util.Log;
  */
 public class CurlMesh {
 
-	// Flag for additional lines.
+	// Flag for rendering some lines used for developing. Namely one showing
+	// line curl happens around and another one showing the direction from the
+	// position given.
 	private static final boolean DRAW_HELPERS = false;
-	// Flag for drawing polygon outlines.
+	// Flag for drawing polygon outlines. Using this flag crashes on emulator
+	// due to reason unknown to me. Leaving it here anyway as seeing polygon
+	// outlines gives good insight how original rectangle is divided.
 	private static final boolean DRAW_POLYGON_OUTLINES = false;
-	// Flag for enabling texture rendering.
+	// Flag for enabling texture rendering. While this is likely something you
+	// don't want to do it's been used for development purposes as texture
+	// rendering is rather slow on emulator.
 	private static final boolean DRAW_TEXTURE = true;
 	// Flag for enabling shadow rendering.
 	private static final boolean DRAW_SHADOW = true;
 
-	// Colors for shadow.
+	// Colors for shadow. Inner one is the color drawn next to surface where
+	// shadowed area starts and outer one is color shadow ends to.
 	private static final float[] SHADOW_INNER_COLOR = { 0f, 0f, 0f, .5f };
 	private static final float[] SHADOW_OUTER_COLOR = { 0f, 0f, 0f, .0f };
 
 	// Alpha values for front and back facing texture.
 	private static final double BACKFACE_ALPHA = .2f;
 	private static final double FRONTFACE_ALPHA = 1f;
+	// Boolean used for situations where mesh is back facing.
 	private boolean mSwapAlpha = false;
 
 	// For testing purposes.
@@ -53,10 +61,15 @@ public class CurlMesh {
 	private int mDropShadowCount;
 	private int mSelfShadowCount;
 
+	// Maximum number of split lines used for creating a curl.
 	private int mMaxCurlSplits;
 
+	// Bounding rectangle for this mesh. mRectagle[0] = top-left corner,
+	// mRectangle[1] = bottom-left, mRectangle[2] = top-right and mRectangle[3]
+	// bottom-right.
 	private Vertex[] mRectangle = new Vertex[4];
 
+	// One and only texture id.
 	private int[] mTextureIds;
 	private Bitmap mBitmap;
 
@@ -74,7 +87,9 @@ public class CurlMesh {
 	 * Constructor for mesh object.
 	 * 
 	 * @param maxCurlSplits
-	 *            Maximum number curl can be divided into.
+	 *            Maximum number curl can be divided into. The bigger the value
+	 *            the smoother curl will be. With the cost of having more
+	 *            polygons for drawing.
 	 */
 	public CurlMesh(int maxCurlSplits) {
 		// There really is no use for 0 splits.
@@ -120,7 +135,10 @@ public class CurlMesh {
 			mHelperLines.position(0);
 		}
 
-		int maxVerticesCount = 4 + 2 + 2 * mMaxCurlSplits;
+		// There are 4 vertices from bounding rect, max 2 from adding split line
+		// to two corners and curl consists of max mMaxCurlSplits lines each
+		// outputting 2 vertices.
+		int maxVerticesCount = 4 + 2 + (2 * mMaxCurlSplits);
 		ByteBuffer vbb = ByteBuffer.allocateDirect(maxVerticesCount * 3 * 4);
 		vbb.order(ByteOrder.nativeOrder());
 		mVertices = vbb.asFloatBuffer();
@@ -161,7 +179,8 @@ public class CurlMesh {
 	 * Curl calculation.
 	 * 
 	 * @param curlPos
-	 *            Position for curl center.
+	 *            Position for curl 'center'. Can be any point on line collinear
+	 *            to curl.
 	 * @param directionVec
 	 *            Curl direction.
 	 * @param radius
@@ -202,11 +221,11 @@ public class CurlMesh {
 		double curlAngle = Math.acos(directionVec.x);
 		curlAngle = directionVec.y > 0 ? -curlAngle : curlAngle;
 
-		// Initiate rotated 'rectangle' which's is translated to curlPos and
-		// rotated so that curl direction heads to (1,0). Vertices are ordered
-		// in ascending order based on x -coordinate at the same time. And using
-		// y -coordinate in very rare case where two vertices have same x
-		// -coordinate.
+		// Initiate rotated rectangle which's is translated to curlPos and
+		// rotated so that curl direction heads to right (1,0). Vertices are
+		// ordered in ascending order based on x -coordinate at the same time.
+		// And using y -coordinate in very rare case in which two vertices have
+		// same x -coordinate.
 		mTempVertices.addAll(mRotatedVertices);
 		mRotatedVertices.clear();
 		for (int i = 0; i < 4; ++i) {
@@ -233,8 +252,13 @@ public class CurlMesh {
 		// 0 and 1. But due to inaccuracy it's possible vertex 3 is not the
 		// opposing corner from vertex 0. So we are calculating distance from
 		// vertex 0 to vertices 2 and 3 - and altering line indices if needed.
+		// Also vertices/lines are given in an order first one has x -coordinate
+		// at least the latter one. This property is used in getScanLines to see
+		// if there is an intersection.
 		int lines[][] = { { 0, 1 }, { 0, 2 }, { 1, 3 }, { 2, 3 } };
 		{
+			// TODO: There really has to be more 'easier' way of doing this -
+			// not including extensive use of sqrt.
 			Vertex v0 = mRotatedVertices.get(0);
 			Vertex v2 = mRotatedVertices.get(2);
 			Vertex v3 = mRotatedVertices.get(3);
@@ -262,6 +286,7 @@ public class CurlMesh {
 		// Length of 'curl' curve.
 		double curlLength = Math.PI * radius;
 		// Calculate scan lines.
+		// TODO: Revisit this code one day. There is room for optimization here.
 		mScanLines.clear();
 		if (mMaxCurlSplits > 0) {
 			mScanLines.add((double) 0);
@@ -269,38 +294,71 @@ public class CurlMesh {
 		for (int i = 1; i < mMaxCurlSplits; ++i) {
 			mScanLines.add((-curlLength * i) / (mMaxCurlSplits - 1));
 		}
+		// As mRotatedVertices is ordered regarding x -coordinate, adding
+		// this scan line produces scan area picking up vertices which are
+		// rotated completely. One could say 'until infinity'
 		mScanLines.add(mRotatedVertices.get(3).mPosX - 1);
 
-		// Start from right most vertex.
+		// Start from right most vertex. Pretty much the same as first scan area
+		// is starting from 'infinity'.
 		double scanXmax = mRotatedVertices.get(0).mPosX + 1;
+
 		for (int i = 0; i < mScanLines.size(); ++i) {
+			// Once we have scanXmin and scanXmax we have a scan area in which
+			// this loop iterates.
 			double scanXmin = mScanLines.get(i);
-			// First iterate vertices within scan area.
+			// First iterate 'original' vertices within scan area.
 			for (int j = 0; j < mRotatedVertices.size(); ++j) {
 				Vertex v = mRotatedVertices.get(j);
+				// Test if vertex lies within this scan area.
+				// TODO: Frankly speaking, can't remember why equality check was
+				// added to both ends. Guessing it was somehow related to case
+				// where radius=0f, which, given current implementation, could
+				// be handled much more effectively anyway.
 				if (v.mPosX >= scanXmin && v.mPosX <= scanXmax) {
+					// Pop out a vertex from temp vertices.
 					Vertex n = mTempVertices.remove(0);
 					n.set(v);
+					// This is done solely for triangulation reasons. Given a
+					// rotated rectangle there are max 2 vertices having
+					// intersection on opposite side of rectangle.
 					Array<Vertex> intersections = getIntersections(
 							mRotatedVertices, lines, n.mPosX);
+					// In a sense one could say we're adding vertices always in
+					// two, positioned at the ends of intersecting line. And for
+					// triangulation to work properly they are added based on y
+					// -coordinate. And this if-else is doing it for us.
 					if (intersections.size() == 1
 							&& intersections.get(0).mPosY > v.mPosY) {
+						// In case intersecting vertex is higher add it first.
 						mOutputVertices.addAll(intersections);
 						mOutputVertices.add(n);
 					} else if (intersections.size() <= 1) {
+						// Otherwise add original vertex first.
 						mOutputVertices.add(n);
 						mOutputVertices.addAll(intersections);
 					} else {
+						// There should never be more than 1 intersecting
+						// vertex.
+						// But if it happens as a fall back simply skip
+						// everything.
 						Log.d("CurlMesh", "Intersections size > 1");
 						mTempVertices.add(n);
 						mTempVertices.addAll(intersections);
 					}
 				}
 			}
-			// Search for line intersections.
+
+			// Search for scan line intersections.
 			Array<Vertex> intersections = getIntersections(mRotatedVertices,
 					lines, scanXmin);
+
+			// We expect to get 0 or 2 vertices. In rare cases there's only one
+			// but in general given a scan line intersecting rectangle there
+			// should be 2 intersecting vertices.
 			if (intersections.size() == 2) {
+				// There were two intersections, add them based on y
+				// -coordinate, higher first, lower last.
 				Vertex v1 = intersections.get(0);
 				Vertex v2 = intersections.get(1);
 				if (v1.mPosY < v2.mPosY) {
@@ -310,11 +368,18 @@ public class CurlMesh {
 					mOutputVertices.addAll(intersections);
 				}
 			} else if (intersections.size() != 0) {
+				// This happens in a case in which there is a original vertex
+				// exactly at scan line or something went very much wrong if
+				// there are 3+ vertices. What ever the reason just return the
+				// vertices to temp vertices for later use. In former case it
+				// was handled already earlier once iterating through
+				// mRotatedVertices, in latter case it's better to avoid doing
+				// anything with them.
 				Log.d("CurlMesh", "Intersections size != 0 or 2");
 				mTempVertices.addAll(intersections);
 			}
 
-			// Add vertices to out buffers.
+			// Add vertices found during this iteration to vertex etc buffers.
 			while (mOutputVertices.size() > 0) {
 				Vertex v = mOutputVertices.remove(0);
 				mTempVertices.add(v);
@@ -336,8 +401,7 @@ public class CurlMesh {
 				// Vertex lies within 'curl'.
 				else {
 					// Even though it's not obvious from the if-else clause,
-					// here
-					// v.mPosX is between [-curlLength, 0]. And we can do
+					// here v.mPosX is between [-curlLength, 0]. And we can do
 					// calculations around a half cylinder.
 					double rotY = Math.PI * (v.mPosX / curlLength);
 					v.mPosX = radius * Math.sin(rotY);
@@ -388,6 +452,7 @@ public class CurlMesh {
 				}
 			}
 
+			// Switch scanXmin as scanXmax for next iteration.
 			scanXmax = scanXmin;
 		}
 
@@ -463,7 +528,7 @@ public class CurlMesh {
 			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_T,
 					GL10.GL_CLAMP_TO_EDGE);
 		}
-		// If mBitmap != null we have new texture.
+		// If mBitmap != null we have a new texture.
 		if (DRAW_TEXTURE && mBitmap != null) {
 			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
 			GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, mBitmap, 0);
@@ -505,9 +570,9 @@ public class CurlMesh {
 		gl.glDisable(GL10.GL_TEXTURE_2D);
 		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, mVerticesCountFront);
 		// Draw front facing texture.
-		// TODO: Decide whether it's really needed to have alpha blending to
-		// page background for front facing texture. If not, GL_BLEND isn't
-		// needed, possibly increasing performance.
+		// TODO: Decide whether it's really needed to have alpha blending for
+		// front facing texture. If not, GL_BLEND isn't needed, possibly
+		// increasing performance.
 		if (DRAW_TEXTURE) {
 			gl.glEnable(GL10.GL_BLEND);
 			gl.glEnable(GL10.GL_TEXTURE_2D);
@@ -570,7 +635,8 @@ public class CurlMesh {
 	}
 
 	/**
-	 * Resets mesh to 'initial' state.
+	 * Resets mesh to 'initial' state. Meaning this mesh will draw a plain
+	 * textured rectangle after call to this method.
 	 */
 	public synchronized void reset() {
 		mVertices.position(0);
@@ -594,7 +660,10 @@ public class CurlMesh {
 
 	/**
 	 * Resets allocated texture id forcing creation of new one. After calling
-	 * this method you most likely want to set bitmap too as it's lost.
+	 * this method you most likely want to set bitmap too as it's lost. This
+	 * method should be called only once e.g GL context is re-created as this
+	 * method does not release previous texture id, only makes sure new one is
+	 * requested on next render.
 	 */
 	public synchronized void resetTexture() {
 		mTextureIds = null;
@@ -668,10 +737,16 @@ public class CurlMesh {
 	private Array<Vertex> getIntersections(Array<Vertex> vertices,
 			int[][] lineIndices, double scanX) {
 		mIntersections.clear();
+		// Iterate through rectangle lines each re-presented as a pair of
+		// vertices.
 		for (int j = 0; j < lineIndices.length; j++) {
 			Vertex v1 = vertices.get(lineIndices[j][0]);
 			Vertex v2 = vertices.get(lineIndices[j][1]);
+			// Here we expect that v1.mPosX >= v2.mPosX and wont do intersection
+			// test the opposite way.
 			if (v1.mPosX > scanX && v2.mPosX < scanX) {
+				// There is an intersection, calculate coefficient telling 'how
+				// far' scanX is from v2.
 				double c = (scanX - v2.mPosX) / (v1.mPosX - v2.mPosX);
 				Vertex n = mTempVertices.remove(0);
 				n.set(v2);
@@ -768,13 +843,6 @@ public class CurlMesh {
 			}
 			--mSize;
 			return item;
-		}
-
-		public void set(int index, T item) {
-			if (index < 0 || index >= mSize) {
-				throw new IndexOutOfBoundsException();
-			}
-			mArray[index] = item;
 		}
 
 		public int size() {
