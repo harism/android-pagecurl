@@ -9,7 +9,7 @@ import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 
 /**
- * Basic holder for Activity for curl testing.
+ * Simple Activity for curl testing.
  * 
  * @author harism
  */
@@ -17,7 +17,6 @@ public class CurlActivity extends Activity {
 
 	private CurlView mCurlView;
 
-	// Called when the activity is first created.
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
