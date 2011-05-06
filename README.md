@@ -8,7 +8,15 @@ exceptions, let it be as-is implementation or - maybe more preferably - as an ex
 <br>
 Ps. If you still feel I'm breaking your intellectual rights it's absolutely unintentional.
 I did some research using Google and checked a bunch of videos found on YouTube but never visited www.upsto.gov.
-In such case please do drop me an email - instead of suing without a blink - ok?
+In such case please do drop me an email - instead of suing without a blink - ok?<br>
+<br>
+For the ones without Android development environment, and/or people willing to take only
+a brief look on what's happening here, I captured a few videos. While I'm not a happy
+owner of Android device yet I'm truly hoping performance is not that poor on actual device compared
+to what you see here;
+
+* [With textures](http://www.youtube.com/watch?v=WbNyapB9jvI)
+* [Without textures](http://www.youtube.com/watch?v=AFmJ-ON-ulI)
 
 ToDo
 ====
