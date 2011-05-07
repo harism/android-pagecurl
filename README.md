@@ -7,12 +7,21 @@ from [deviantART](http://browse.deviantart.com/customization/icons/dock/#/dz0w8n
 exceptions, let it be as-is implementation or - maybe more preferably - as an example for implementing your own effect.<br>
 <br>
 For the ones without Android development environment, and/or people willing to take only
-a brief look on what's happening here, I captured a few videos. While I'm not a happy
-owner of Android device yet I'm truly hoping performance is not that poor on actual device compared
+a brief look on what's happening here, there are a few video captures. While person responsible for capturing
+them is not a happy owner of Android device yet It's truly hoped performance is not that poor on actual device compared
 to what you see here;
 
 * [With textures](http://www.youtube.com/watch?v=WbNyapB9jvI)
 * [Without textures](http://www.youtube.com/watch?v=AFmJ-ON-ulI)
+
+So what you saw there;
+
+1. There are approximately 26 + 26 + 4 + 4 = 60 vertices at most.
+2. 8 vertices for underlying pages, 4 for each.
+3. ~26 vertices for curled page + ~26 vertices for fake soft shadow. These numbers are maximum
+values and vary depending on curl position and angle.
+4. Rendering them as triangle strips end up producing approximately 50 polygons at most. To give
+some perspective rendering a cube without back face culling requires 8 vertices and 12 polygons.
 
 ToDo
 ====
@@ -31,9 +40,10 @@ around a cylinder. Depending on what you're trying to achieve of course. For me 
 most important from the beginning that 'paper edge' follows pointer at all times.
 
 Anyway, here are a few links describing this page curl implementation somewhat well.
-Only difference is that instead of using a static grid I implemented an algorithm
-which 'splits' rectangle dynamically regarding curl position and direction.
+Only difference is that instead of using a static grid an algorithm which 'splits'
+rectangle dynamically regarding curl position and direction was implemented.
 This is done in order to get better render quality and to reduce polygon count.
+It's an absolute win-win situation if these things can be combined with limited performance loss.
 We really do not want to draw polygons separately if they lie next to each other on same plane.
 It's more appropriate to have more vertices used for drawing rotating part instead.
 On negative side lots of code complexity comes from the need for creating a triangle strip for rendering.
@@ -80,13 +90,13 @@ Happy page flipping  :)<br/>
 
 Sources of inspiration
 ======================
-Some YouTube links to page curl/flip implementations I've found interesting for a reason or another.
+Some YouTube links to page curl/flip implementations which were found interesting for a reason or another.
 
 * Tiffany [http://www.youtube.com/watch?v=Yg04wfnDpiQ]
 * Huone Inc [http://www.youtube.com/watch?v=EVHksX0GdIQ]
 * CodeFlakes [http://www.youtube.com/watch?v=ynu4Ov-29Po]
 
-Not to forget some of my real time rendering heros. One day I'm beating them all. One day.
+Not to forget many of the true real-time rendering heros. One day I'm beating them all. One day. Right?
 
 * Rgba&Tbc - Elevated [http://www.youtube.com/watch?v=_YWMGuh15nE]
 * Andromeda&Orb - Stargazer [http://www.youtube.com/watch?v=5u1cqYLNbJI]
