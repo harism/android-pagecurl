@@ -51,7 +51,8 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	private PointF mPointerPos = new PointF();
 	private PointF mCurlPos = new PointF();
 	private PointF mCurlDir = new PointF();
-
+	
+	private float mDoPageTurnCurlPercent = .2f;
 	private boolean mAnimate = false;
 	private PointF mAnimationSource = new PointF();
 	private PointF mAnimationTarget = new PointF();
@@ -269,44 +270,49 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		case MotionEvent.ACTION_CANCEL:
 		case MotionEvent.ACTION_UP: {
 			if (mCurlState == CURL_LEFT || mCurlState == CURL_RIGHT) {
-				// Animation source is the point from where animation starts.
-				// Also it's handled in a way we actually simulate touch events
-				// meaning the output is exactly the same as if user drags the
-				// page to other side. While not producing the best looking
-				// result (which is easier done by altering curl position and/or
-				// direction directly), this is done in a hope it made code a
-				// bit more readable and easier to maintain.
-				mAnimationSource.set(mPointerPos);
-				mAnimationStartTime = System.currentTimeMillis();
+			// Animation source is the point from where animation starts.
+			mAnimationSource.set(mPointerPos);
+			mAnimationStartTime = System.currentTimeMillis();
 
-				// Given the explanation, here we decide whether to simulate
-				// drag to left or right end.
-				if ((mViewMode == SHOW_ONE_PAGE && mPointerPos.x > (rightRect.left + rightRect.right) / 2)
-						|| mViewMode == SHOW_TWO_PAGES
-						&& mPointerPos.x > rightRect.left) {
-					// On right side target is always right page's right border.
-					mAnimationTarget.set(mDragStartPos);
-					mAnimationTarget.x = mRenderer
-							.getPageRect(CurlRenderer.PAGE_RIGHT).right;
-					mAnimationTargetEvent = SET_CURL_TO_RIGHT;
-				} else {
-					// On left side target depends on visible pages.
-					mAnimationTarget.set(mDragStartPos);
-					if (mCurlState == CURL_RIGHT || mViewMode == SHOW_TWO_PAGES) {
-						mAnimationTarget.x = leftRect.left;
-					} else {
-						mAnimationTarget.x = rightRect.left;
-					}
-					mAnimationTargetEvent = SET_CURL_TO_LEFT;
-				}
-				mAnimate = true;
-				requestRender();
+			//Find mDoPageTurnCurlPercent in terms of position
+			float curlPointModifier = rightRect.width();
+			if(mViewMode == SHOW_TWO_PAGES){
+			curlPointModifier += leftRect.width();
+			}
+			curlPointModifier *= mDoPageTurnCurlPercent;
+
+			mAnimationTarget.set(mDragStartPos);
+			//Page turn animation will now occur if a curl drag has reached a certain percentage before release.
+			if (mCurlState == CURL_RIGHT && mPointerPos.x > rightRect.right - curlPointModifier) {
+			mAnimationTarget.x = rightRect.right;
+			mAnimationTargetEvent = SET_CURL_TO_RIGHT;
+			} else if ((mCurlState == CURL_LEFT && mPointerPos.x < (mViewMode == SHOW_TWO_PAGES ? leftRect.left : rightRect.left) + curlPointModifier) || mCurlState == CURL_RIGHT) {
+			if (mViewMode == SHOW_TWO_PAGES) {
+			mAnimationTarget.x = leftRect.left;
+			} else {
+			mAnimationTarget.x = rightRect.left;
+			}
+			mAnimationTargetEvent = SET_CURL_TO_LEFT;
+			} else {
+			mAnimationTarget.x = rightRect.right;
+			mAnimationTargetEvent = SET_CURL_TO_RIGHT;
+			}
+			 
+			mAnimate = true;
+			requestRender();
 			}
 			break;
-		}
-		}
+			}
+			}
 
-		return true;
+			return true;
+	}
+	
+	/*
+	 * Set the percentage a curl drag must reach before release, for a turn to be complete
+	 */
+	public void setDoPageTurnCurlPercent(float doPageTurnCurlPercent){
+		mDoPageTurnCurlPercent = doPageTurnCurlPercent;
 	}
 
 	/**
