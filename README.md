@@ -2,7 +2,7 @@ Introduction
 ============
 Project for implementing 'page curl' effect on Android + OpenGL ES 1.0 (possibly 1.1/2.0 too if there's clear advantage in using them).
 Feel free to use everything found here on what ever purpose you can imagine of. With the exception of
-images I'm using as example as they are randomly selected from Google Images. And application icon is borrowed
+images being used as an example as they are randomly selected from Google Images. And application icon is borrowed
 from [deviantART](http://browse.deviantart.com/customization/icons/dock/#/dz0w8n). Besides these
 exceptions, let it be as-is implementation or - maybe more preferably - as an example for implementing your own effect.
 
@@ -16,11 +16,11 @@ to what you see here;
 
 So what you saw there;
 
-1. There are approximately 26 + 26 + 4 + 4 = 60 vertices at most.
-2. 8 vertices for underlying pages, 4 for each.
-3. ~26 vertices for curled page + ~26 vertices for fake soft shadow. These numbers are maximum
+* There are approximately 26 + 26 + 4 + 4 = 60 vertices at most.
+* 8 vertices for underlying pages, 4 for each.
+* ~26 vertices for curled page + ~26 vertices for fake soft shadow. These numbers are maximum
 values and vary depending on curl position and angle.
-4. Rendering them as triangle strips end up producing approximately 50 polygons at most. To give
+* Rendering them as triangle strips end up producing approximately 50 polygons at most. To give
 some perspective rendering a cube without back face culling requires 8 vertices and 12 polygons.
 
 ToDo
@@ -43,8 +43,9 @@ Anyway, here are a few links describing this page curl implementation somewhat w
 Only difference is that instead of using a static grid an algorithm which 'splits'
 rectangle dynamically regarding curl position and direction was implemented.
 This is done in order to get better render quality and to reduce polygon count.
-It's an absolute win-win situation if these things can be combined with limited performance loss.
-We really do not want to draw polygons separately if they lie next to each other on same plane.
+It's an absolute win-win situation if these things can be combined with limited amount
+of extra calculation to ease the work of renderer. In this particular case, we really
+do not want to draw polygons separately if they lie next to each other on same plane.
 It's more appropriate to have more vertices used for drawing rotating part instead.
 On negative side lots of code complexity comes from the need for creating a triangle strip for rendering.
 Using a solid grid such problems do not occur at all.
@@ -56,7 +57,7 @@ It isn't very difficult to see what happens here once you take a paper and simpl
 curl it to some direction. If you fold paper completely, cylinder, curl happens around,
 radius becomes zero, making it more of a 2D effect. And likewise folding the paper so
 that curl radius is constant most of the characteristics remain - most importantly there
-is a line - at center of this 'cylinder' - which has constant slope not dependent on radius.
+is a line - at the center of this 'cylinder' - which has constant slope not dependent on radius.
 Its distance from the point you're holding the paper varies only. Using such approach makes
 handling curl position based on touch events a lot easier compared to using a cone
 as solid curling is done around. For information on using a cone, it's highly recommended to take a look on W. Dana Nuon's [blog
@@ -67,13 +68,13 @@ is a good read too.
 Curl/cylinder is defined with three parameters, position, which is any point on a line collinear to
 curl. Direction vector which tells direction curl 'opens to'. And curl/cylinder
 radius. 'Paper' is first translated and rotated; curl position translates
-to origin and then rotated so that curl opens to right (1,0). This transformation makes
+to origin and then rotated so that curl opens to right (1, 0). This transformation makes
 it a bit easier to calculate rotating vertices as all vertices which have x -coordinate
 at least 0 are not affected. Vertices which have x -coordinate between (-PI*radius, 0)
 are within 'curl', and if x -coordinate is less than equal to -PI*radius they are completely rotated.
 And scan line algorithm for splitting lines within rotating area is more simple as
-scan lines are always vertical. Not to forget rotating happens around y -axis (0, radius) as
-cylinder center is positioned at x=0. And after we translate these vertices back to
+scan lines are always vertical. Not to forget rotating happens around y -axis as
+cylinder center is positioned at x = 0. And after we translate these vertices back to
 original position we have a curl which direction heads to direction vector and it's center
 is located at given curl position.
 
