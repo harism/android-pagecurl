@@ -4,8 +4,8 @@ Project for implementing 'page curl' effect on Android + OpenGL ES 1.0 (possibly
 Feel free to use everything found here on what ever purpose you can imagine of. With the exception of
 images I'm using as example as they are randomly selected from Google Images. And application icon is borrowed
 from [deviantART](http://browse.deviantart.com/customization/icons/dock/#/dz0w8n). Besides these
-exceptions, let it be as-is implementation or - maybe more preferably - as an example for implementing your own effect.<br>
-<br>
+exceptions, let it be as-is implementation or - maybe more preferably - as an example for implementing your own effect.
+
 For the ones without Android development environment, and/or people willing to take only
 a brief look on what's happening here, there are a few video captures. While person responsible for capturing
 them is not a happy owner of Android device yet It's truly hoped performance is not that poor on actual device compared
@@ -47,7 +47,7 @@ It's an absolute win-win situation if these things can be combined with limited 
 We really do not want to draw polygons separately if they lie next to each other on same plane.
 It's more appropriate to have more vertices used for drawing rotating part instead.
 On negative side lots of code complexity comes from the need for creating a triangle strip for rendering.
-Using a solid grid such problems do not occur at all.<br/>
+Using a solid grid such problems do not occur at all.
 
 * Page Flip 2D [http://nomtek.com/tips-for-developers/page-flip-2d/]
 * Page Flip 3D [http://nomtek.com/tips-for-developers/page-flip-3d/]
@@ -59,13 +59,12 @@ that curl radius is constant most of the characteristics remain - most important
 is a line - at center of this 'cylinder' - which has constant slope not dependent on radius.
 Its distance from the point you're holding the paper varies only. Using such approach makes
 handling curl position based on touch events a lot easier compared to using a cone
-as solid curling is done around.<br/>
-<br/>
-For information on using a cone, it's highly recommended to take a look on W. Dana Nuon's blog
-post on the topic. Chris Luke's article is a good read too.
+as solid curling is done around.
 
-* [Implementing iBooks page curling using a conical deformation algorithm](http://wdnuon.blogspot.com/2010/05/implementing-ibooks-page-curling-using.html)
-* [The anatomy of a page curl](http://blog.flirble.org/2010/10/08/the-anatomy-of-a-page-curl/)
+For information on using a cone, it's highly recommended to take a look on W. Dana Nuon's [blog
+post](http://wdnuon.blogspot.com/2010/05/implementing-ibooks-page-curling-using.html)
+on the topic. Chris Luke's [article](http://blog.flirble.org/2010/10/08/the-anatomy-of-a-page-curl/)
+is a good read too.
 
 Curl/cylinder is defined with three parameters, position, which is any point on a line collinear to
 curl. Direction vector which tells direction curl 'opens to'. And curl/cylinder
@@ -78,8 +77,8 @@ And scan line algorithm for splitting lines within rotating area is more simple 
 scan lines are always vertical. Not to forget rotating happens around y -axis (0, radius) as
 cylinder center is positioned at x=0. And after we translate these vertices back to
 original position we have a curl which direction heads to direction vector and it's center
-is located at given curl position.<br/>
-<br/>
+is located at given curl position.
+
 1. At first there is a piece of paper represented by 4 vertices at its corners.<br/>
 ![Paper 1](https://github.com/harism/android_page_curl/blob/master/paper1.jpg?raw=true)<br/>
 2. And let's say we want to curl it approximately like this.<br/>
@@ -88,11 +87,11 @@ is located at given curl position.<br/>
 area increases its quality. But the idea remains, bounding lines of original rectangle are split on
 more/less dense basis.<br/>
 ![Paper 3](https://github.com/harism/android_page_curl/blob/master/paper3.jpg?raw=true)<br/>
-<br/>
+
 But, once again, using a piece of paper and doing some experiments by yourself works
 much more as a proper explanation than words, mine at least, can tell.
 And maybe gives some idea how to make better/more realistic implementation.
-Happy page flipping  :)<br/>
+Happy page flipping  :)
 
 Sources of inspiration
 ======================
