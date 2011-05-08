@@ -61,6 +61,12 @@ Its distance from the point you're holding the paper varies only. Using such app
 handling curl position based on touch events a lot easier compared to using a cone
 as solid curling is done around.<br/>
 <br/>
+For information on using a cone, it's highly recommended to take a look on W. Dana Nuon's blog
+post on the topic. Chris Luke's article is a good read too.
+
+* [Implementing iBooks page curling using a conical deformation algorithm](http://wdnuon.blogspot.com/2010/05/implementing-ibooks-page-curling-using.html)
+* [The anatomy of a page curl](http://blog.flirble.org/2010/10/08/the-anatomy-of-a-page-curl/)
+
 Curl/cylinder is defined with three parameters, position, which is any point on a line collinear to
 curl. Direction vector which tells direction curl 'opens to'. And curl/cylinder
 radius. 'Paper' is first translated and rotated; curl position translates
@@ -96,7 +102,7 @@ Some YouTube links to page curl/flip implementations which were found interestin
 * Huone Inc [http://www.youtube.com/watch?v=EVHksX0GdIQ]
 * CodeFlakes [http://www.youtube.com/watch?v=ynu4Ov-29Po]
 
-Not to forget many of the true real-time rendering heros. One day I'm beating them all. One day. Right?
+Not to forget many of the true real-time rendering heros. One day We're about to beat them all. One day. Right?
 
 * Rgba&Tbc - Elevated [http://www.youtube.com/watch?v=_YWMGuh15nE]
 * Andromeda&Orb - Stargazer [http://www.youtube.com/watch?v=5u1cqYLNbJI]
