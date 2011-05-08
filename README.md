@@ -59,9 +59,7 @@ that curl radius is constant most of the characteristics remain - most important
 is a line - at center of this 'cylinder' - which has constant slope not dependent on radius.
 Its distance from the point you're holding the paper varies only. Using such approach makes
 handling curl position based on touch events a lot easier compared to using a cone
-as solid curling is done around.
-
-For information on using a cone, it's highly recommended to take a look on W. Dana Nuon's [blog
+as solid curling is done around. For information on using a cone, it's highly recommended to take a look on W. Dana Nuon's [blog
 post](http://wdnuon.blogspot.com/2010/05/implementing-ibooks-page-curling-using.html)
 on the topic. Chris Luke's [article](http://blog.flirble.org/2010/10/08/the-anatomy-of-a-page-curl/)
 is a good read too.
