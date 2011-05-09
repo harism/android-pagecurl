@@ -61,6 +61,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	private int mAnimationTargetEvent;
 	private static final int SET_CURL_TO_LEFT = 1;
 	private static final int SET_CURL_TO_RIGHT = 2;
+	private boolean mAdjustCurlRadiusWithPressure = false;
 
 	private CurlRenderer mRenderer;
 	private BitmapProvider mBitmapProvider;
@@ -153,7 +154,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 							/ mAnimationDurationTime);
 			mPointerPos.x += (mAnimationTarget.x - mAnimationSource.x) * t;
 			mPointerPos.y += (mAnimationTarget.y - mAnimationSource.y) * t;
-			updateCurlPos(mPointerPos);
+			updateCurlPos(mPointerPos, .0f);
 		}
 	}
 
@@ -264,7 +265,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			}
 		}
 		case MotionEvent.ACTION_MOVE: {
-			updateCurlPos(mPointerPos);
+			updateCurlPos(mPointerPos, me.getPressure());
 			break;
 		}
 		case MotionEvent.ACTION_CANCEL:
@@ -372,6 +373,14 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	 */
 	public void setRenderLeftPage(boolean renderLeftPage) {
 		mRenderLeftPage = renderLeftPage;
+	}
+	
+	/**
+	 * Setter for whether touch pressure is taken in to account when calculating
+	 * curl radius.
+	 */
+	public void setAdjustCurlRadiusWithPressure(boolean adjustCurlRadiusWithPressure) {
+		mAdjustCurlRadiusWithPressure = adjustCurlRadiusWithPressure;
 	}
 
 	/**
@@ -645,10 +654,17 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	/**
 	 * Updates curl position.
 	 */
-	private void updateCurlPos(PointF pointerPos) {
+	private void updateCurlPos(PointF pointerPos, float pressure) {
 
 		// Default curl radius.
 		double radius = mRenderer.getPageRect(CURL_RIGHT).width() / 3;
+		if(mAdjustCurlRadiusWithPressure){
+			/* Pressure is given as a float ranging between .1, no pressure, to 1 (or higher) on normal pressure.
+			 * we'll avoid using 0 so the curl doesn't disappear completely.
+			 * We'll rounding the pressure adjustment off to the nearest tenth to attempt prevent flickering. TOOD: Needs additional testing.
+			 */
+			radius *= (Math.round(Math.max(1f - pressure, .1f)*10.f)/10.0f); 
+		}
 		mCurlPos.set(pointerPos);
 
 		// If curl happens on right page, or on left page on two page mode,
