@@ -65,11 +65,6 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	private BitmapProvider mBitmapProvider;
 	private SizeChangedObserver mSizeChangedObserver;
 
-	// Texture coordinates. For flipping a page we do not alter its rectangle
-	// but flip texture instead.
-	private static final RectF TEXTURE_RECT_FRONT = new RectF(0, 0, 1, 1);
-	private static final RectF TEXTURE_RECT_BACK = new RectF(1, 0, 0, 1);
-
 	/**
 	 * Default constructor.
 	 */
@@ -115,7 +110,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 				CurlMesh right = mPageCurl;
 				CurlMesh curl = mPageRight;
 				right.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT));
-				right.setTexRect(TEXTURE_RECT_FRONT);
+				right.setFlipTexture(false);
 				right.reset();
 				mRenderer.removeCurlMesh(curl);
 				mPageCurl = curl;
@@ -129,7 +124,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 				CurlMesh left = mPageCurl;
 				CurlMesh curl = mPageLeft;
 				left.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
-				left.setTexRect(TEXTURE_RECT_BACK);
+				left.setFlipTexture(true);
 				left.reset();
 				mRenderer.removeCurlMesh(curl);
 				if (!mRenderLeftPage) {
@@ -409,8 +404,8 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		mPageLeft = new CurlMesh(10);
 		mPageRight = new CurlMesh(10);
 		mPageCurl = new CurlMesh(10);
-		mPageLeft.setTexRect(TEXTURE_RECT_BACK);
-		mPageRight.setTexRect(TEXTURE_RECT_FRONT);
+		mPageLeft.setFlipTexture(true);
+		mPageRight.setFlipTexture(false);
 	}
 
 	/**
@@ -505,14 +500,14 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 				mPageRight.setBitmap(bitmap);
 				mPageRight.setRect(mRenderer
 						.getPageRect(CurlRenderer.PAGE_RIGHT));
-				mPageRight.setTexRect(TEXTURE_RECT_FRONT);
+				mPageRight.setFlipTexture(false);
 				mPageRight.reset();
 				mRenderer.addCurlMesh(mPageRight);
 			}
 
 			// Add curled page to renderer.
 			mPageCurl.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT));
-			mPageCurl.setTexRect(TEXTURE_RECT_FRONT);
+			mPageCurl.setFlipTexture(false);
 			mPageCurl.reset();
 			mRenderer.addCurlMesh(mPageCurl);
 
@@ -541,7 +536,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 				mPageLeft.setBitmap(bitmap);
 				mPageLeft
 						.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
-				mPageLeft.setTexRect(TEXTURE_RECT_BACK);
+				mPageLeft.setFlipTexture(true);
 				mPageLeft.reset();
 				if (mRenderLeftPage) {
 					mRenderer.addCurlMesh(mPageLeft);
@@ -560,11 +555,11 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			if (mViewMode == SHOW_ONE_PAGE) {
 				mPageCurl.setRect(mRenderer
 						.getPageRect(CurlRenderer.PAGE_RIGHT));
-				mPageCurl.setTexRect(TEXTURE_RECT_FRONT);
+				mPageCurl.setFlipTexture(false);
 			} else {
 				mPageCurl
 						.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
-				mPageCurl.setTexRect(TEXTURE_RECT_BACK);
+				mPageCurl.setFlipTexture(true);
 			}
 			mPageCurl.reset();
 			mRenderer.addCurlMesh(mPageCurl);
