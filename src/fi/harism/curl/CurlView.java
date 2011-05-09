@@ -434,6 +434,11 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		if (mCurlState == CURL_RIGHT
 				|| (mCurlState == CURL_LEFT && mViewMode == SHOW_ONE_PAGE)) {
 			RectF pageRect = mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT);
+			if (curlPos.x >= pageRect.right) {
+				mPageCurl.reset();
+				requestRender();
+				return;
+			}
 			if (curlPos.x < pageRect.left) {
 				curlPos.x = pageRect.left;
 			}
@@ -450,6 +455,11 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			}
 		} else if (mCurlState == CURL_LEFT) {
 			RectF pageRect = mRenderer.getPageRect(CurlRenderer.PAGE_LEFT);
+			if (curlPos.x <= pageRect.left) {
+				mPageCurl.reset();
+				requestRender();
+				return;
+			}
 			if (curlPos.x > pageRect.right) {
 				curlPos.x = pageRect.right;
 			}
