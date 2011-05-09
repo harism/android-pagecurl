@@ -7,6 +7,7 @@ import java.nio.FloatBuffer;
 import javax.microedition.khronos.opengles.GL10;
 
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.PointF;
 import android.graphics.RectF;
 import android.opengl.GLUtils;
@@ -42,8 +43,8 @@ public class CurlMesh {
 	// Alpha values for front and back facing texture.
 	private static final double BACKFACE_ALPHA = .2f;
 	private static final double FRONTFACE_ALPHA = 1f;
-	// Boolean used for situations where mesh is back facing.
-	private boolean mSwapAlpha = false;
+	// Boolean for 'flipping' texture sideways.
+	private boolean mFlipTexture = false;
 
 	// For testing purposes.
 	private int mHelperLinesCount;
@@ -72,6 +73,7 @@ public class CurlMesh {
 	// One and only texture id.
 	private int[] mTextureIds;
 	private Bitmap mBitmap;
+	private RectF mTextureRect = new RectF();
 
 	// Let's avoid using 'new' as much as possible.
 	private Array<Vertex> mTempVertices;
@@ -386,7 +388,7 @@ public class CurlMesh {
 
 				// Untouched vertices.
 				if (i == 0) {
-					v.mAlpha = mSwapAlpha ? BACKFACE_ALPHA : FRONTFACE_ALPHA;
+					v.mAlpha = mFlipTexture ? BACKFACE_ALPHA : FRONTFACE_ALPHA;
 					mVerticesCountFront++;
 				}
 				// 'Completely' rotated vertices.
@@ -395,7 +397,7 @@ public class CurlMesh {
 					v.mPosZ = 2 * radius;
 					v.mPenumbraX = -v.mPenumbraX;
 
-					v.mAlpha = mSwapAlpha ? FRONTFACE_ALPHA : BACKFACE_ALPHA;
+					v.mAlpha = mFlipTexture ? FRONTFACE_ALPHA : BACKFACE_ALPHA;
 					mVerticesCountBack++;
 				}
 				// Vertex lies within 'curl'.
@@ -411,11 +413,11 @@ public class CurlMesh {
 					v.mColor = .1f + .9f * Math.sqrt(Math.sin(rotY) + 1);
 
 					if (v.mPosZ >= radius) {
-						v.mAlpha = mSwapAlpha ? FRONTFACE_ALPHA
+						v.mAlpha = mFlipTexture ? FRONTFACE_ALPHA
 								: BACKFACE_ALPHA;
 						mVerticesCountBack++;
 					} else {
-						v.mAlpha = mSwapAlpha ? BACKFACE_ALPHA
+						v.mAlpha = mFlipTexture ? BACKFACE_ALPHA
 								: FRONTFACE_ALPHA;
 						mVerticesCountFront++;
 					}
@@ -672,18 +674,58 @@ public class CurlMesh {
 	/**
 	 * Sets new texture for this mesh.
 	 */
-	public void setBitmap(Bitmap bitmap) {
+	public synchronized void setBitmap(Bitmap bitmap) {
 		if (DRAW_TEXTURE) {
-			mBitmap = Bitmap.createScaledBitmap(bitmap,
-					getNextHighestPO2(bitmap.getWidth()),
-					getNextHighestPO2(bitmap.getHeight()), true);
+			// Bitmap original size.
+			int w = bitmap.getWidth();
+			int h = bitmap.getHeight();
+			// Bitmap size expanded to next power of two. This is done due to
+			// the requirement on many devices, texture width and height should
+			// be power of two.
+			int newW = getNextHighestPO2(w);
+			int newH = getNextHighestPO2(h);
+			// TODO: Is there another way to create a bigger Bitmap and copy
+			// original Bitmap to it more efficiently?
+			mBitmap = Bitmap.createBitmap(newW, newH, bitmap.getConfig());
+			Canvas c = new Canvas(mBitmap);
+			c.drawBitmap(bitmap, 0, 0, null);
+
+			// Calculate final texture coordinates.
+			float texX = (float) w / newW;
+			float texY = (float) h / newH;
+			mTextureRect.set(0f, 0f, texX, texY);
+			if (mFlipTexture) {
+				setTexCoords(texX, 0f, 0f, texY);
+			} else {
+				setTexCoords(0f, 0f, texX, texY);
+			}
+		}
+	}
+
+	/**
+	 * If true, flips texture sideways.
+	 */
+	public synchronized void setFlipTexture(boolean flipTexture) {
+		mFlipTexture = flipTexture;
+
+		if (mFlipTexture) {
+			setTexCoords(mTextureRect.right, mTextureRect.top,
+					mTextureRect.left, mTextureRect.bottom);
+		} else {
+			setTexCoords(mTextureRect.left, mTextureRect.top,
+					mTextureRect.right, mTextureRect.bottom);
+		}
+
+		for (int i = 0; i < 4; ++i) {
+			mRectangle[i].mAlpha = mFlipTexture ? BACKFACE_ALPHA
+					: FRONTFACE_ALPHA;
 		}
 	}
 
 	/**
 	 * Update mesh bounds.
 	 */
-	public synchronized void setRect(RectF r) {
+	public void setRect(RectF r) {
 		mRectangle[0].mPosX = r.left;
 		mRectangle[0].mPosY = r.top;
 		mRectangle[1].mPosX = r.left;
@@ -692,26 +734,6 @@ public class CurlMesh {
 		mRectangle[2].mPosY = r.top;
 		mRectangle[3].mPosX = r.right;
 		mRectangle[3].mPosY = r.bottom;
-	}
-
-	/**
-	 * Update texture bounds.
-	 */
-	public synchronized void setTexRect(RectF r) {
-		mRectangle[0].mTexX = r.left;
-		mRectangle[0].mTexY = r.top;
-		mRectangle[1].mTexX = r.left;
-		mRectangle[1].mTexY = r.bottom;
-		mRectangle[2].mTexX = r.right;
-		mRectangle[2].mTexY = r.top;
-		mRectangle[3].mTexX = r.right;
-		mRectangle[3].mTexY = r.bottom;
-
-		mSwapAlpha = r.left > r.right;
-		for (int i = 0; i < 4; ++i) {
-			mRectangle[i].mAlpha = mSwapAlpha ? BACKFACE_ALPHA
-					: FRONTFACE_ALPHA;
-		}
 	}
 
 	/**
@@ -778,6 +800,21 @@ public class CurlMesh {
 		n = n | (n >> 16);
 		n = n | (n >> 32);
 		return n + 1;
+	}
+
+	/**
+	 * Sets texture coordinates to mRectange vertices.
+	 */
+	private synchronized void setTexCoords(float left, float top, float right,
+			float bottom) {
+		mRectangle[0].mTexX = left;
+		mRectangle[0].mTexY = top;
+		mRectangle[1].mTexX = left;
+		mRectangle[1].mTexY = bottom;
+		mRectangle[2].mTexX = right;
+		mRectangle[2].mTexY = top;
+		mRectangle[3].mTexX = right;
+		mRectangle[3].mTexY = bottom;
 	}
 
 	/**
