@@ -48,7 +48,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 
 	// Start position for dragging.
 	private PointF mDragStartPos = new PointF();
-	private PointF mPointerPos = new PointF();
+	private PointerPosition mPointerPos = new PointerPosition();
 	private PointF mCurlPos = new PointF();
 	private PointF mCurlDir = new PointF();
 
@@ -64,6 +64,8 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	private CurlRenderer mRenderer;
 	private BitmapProvider mBitmapProvider;
 	private SizeChangedObserver mSizeChangedObserver;
+
+	private boolean mEnableTouchPressure = false;
 
 	/**
 	 * Default constructor.
@@ -141,12 +143,12 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			mAnimate = false;
 			requestRender();
 		} else {
-			mPointerPos.set(mAnimationSource);
+			mPointerPos.mPos.set(mAnimationSource);
 			float t = (float) Math
 					.sqrt((double) (currentTime - mAnimationStartTime)
 							/ mAnimationDurationTime);
-			mPointerPos.x += (mAnimationTarget.x - mAnimationSource.x) * t;
-			mPointerPos.y += (mAnimationTarget.y - mAnimationSource.y) * t;
+			mPointerPos.mPos.x += (mAnimationTarget.x - mAnimationSource.x) * t;
+			mPointerPos.mPos.y += (mAnimationTarget.y - mAnimationSource.y) * t;
 			updateCurlPos(mPointerPos);
 		}
 	}
@@ -191,9 +193,13 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		RectF leftRect = mRenderer.getPageRect(CurlRenderer.PAGE_LEFT);
 
 		// Store pointer position.
-		mPointerPos.x = me.getX();
-		mPointerPos.y = me.getY();
-		mRenderer.translate(mPointerPos);
+		mPointerPos.mPos.set(me.getX(), me.getY());
+		mRenderer.translate(mPointerPos.mPos);
+		if (mEnableTouchPressure) {
+			mPointerPos.mPressure = me.getPressure();
+		} else {
+			mPointerPos.mPressure = 0f;
+		}
 
 		switch (me.getAction()) {
 		case MotionEvent.ACTION_DOWN: {
@@ -201,7 +207,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			// Once we receive pointer down event its position is mapped to
 			// right or left edge of page and that'll be the position from where
 			// user is holding the paper to make curl happen.
-			mDragStartPos.set(mPointerPos);
+			mDragStartPos.set(mPointerPos.mPos);
 
 			// First we make sure it's not over or below page. Pages are
 			// supposed to be same height so it really doesn't matter do we use
@@ -271,14 +277,14 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 				// result (which is easier done by altering curl position and/or
 				// direction directly), this is done in a hope it made code a
 				// bit more readable and easier to maintain.
-				mAnimationSource.set(mPointerPos);
+				mAnimationSource.set(mPointerPos.mPos);
 				mAnimationStartTime = System.currentTimeMillis();
 
 				// Given the explanation, here we decide whether to simulate
 				// drag to left or right end.
-				if ((mViewMode == SHOW_ONE_PAGE && mPointerPos.x > (rightRect.left + rightRect.right) / 2)
+				if ((mViewMode == SHOW_ONE_PAGE && mPointerPos.mPos.x > (rightRect.left + rightRect.right) / 2)
 						|| mViewMode == SHOW_TWO_PAGES
-						&& mPointerPos.x > rightRect.left) {
+						&& mPointerPos.mPos.x > rightRect.left) {
 					// On right side target is always right page's right border.
 					mAnimationTarget.set(mDragStartPos);
 					mAnimationTarget.x = mRenderer
@@ -344,6 +350,17 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		}
 		updateBitmaps();
 		requestRender();
+	}
+
+	/**
+	 * If set to true, touch event pressure information is used to adjust curl
+	 * radius. The more you press, the flatter the curl becomes. This is
+	 * somewhat experimental and results may vary significantly between devices.
+	 * On emulator pressure information seems to be flat 1.0f which is maximum
+	 * value and therefore not very much of use.
+	 */
+	public void setEnableTouchPressure(boolean enableTouchPressure) {
+		mEnableTouchPressure = enableTouchPressure;
 	}
 
 	/**
@@ -634,11 +651,22 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	/**
 	 * Updates curl position.
 	 */
-	private void updateCurlPos(PointF pointerPos) {
+	private void updateCurlPos(PointerPosition pointerPos) {
 
 		// Default curl radius.
 		double radius = mRenderer.getPageRect(CURL_RIGHT).width() / 3;
-		mCurlPos.set(pointerPos);
+		// TODO: This is not an optimal solution. Based on feedback received so
+		// far; pressure is not very accurate, it may be better not to map
+		// coefficient to range [0f, 1f] but something like [.2f, 1f] instead.
+		// Leaving it as is until get my hands on a real device. On emulator
+		// this doesn't work anyway.
+		radius *= Math.max(1f - pointerPos.mPressure, 0f);
+		// NOTE: Here we set pointerPos to mCurlPos. It might be a bit confusing
+		// later to see e.g "mCurlPos.x - mDragStartPos.x" used. But it's
+		// actually pointerPos we are doing calculations against. Why? Simply to
+		// optimize code a bit with the cost of making it unreadable. Otherwise
+		// we had to this in both of the next if-else branches.
+		mCurlPos.set(pointerPos.mPos);
 
 		// If curl happens on right page, or on left page on two page mode,
 		// we'll calculate curl position from pointerPos.
@@ -721,6 +749,14 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		 * Called once CurlView size changes.
 		 */
 		public void onSizeChanged(int width, int height);
+	}
+
+	/**
+	 * Simple holder for pointer position.
+	 */
+	private class PointerPosition {
+		PointF mPos = new PointF();
+		float mPressure;
 	}
 
 }

@@ -23,6 +23,15 @@ values and vary depending on curl position and angle.
 * Rendering them as triangle strips end up producing approximately 50 polygons at most. To give
 some perspective rendering a cube without back face culling requires 8 vertices and 12 polygons.
 
+What you didn't see;
+
+* There is an experimental flag unable to show on emulator. With the kind help of
+[Andrew Winter](https://github.com/drewjw81) it was possible to do some experimenting
+on using touch pressure information. If you go and call CurlView.setEnableTouchPressure(true),
+curl radius will be adjusted based on the touch pressure. The more you press, the smaller it gets.
+Currently it's a vast one line 'hack', simply to show off it's there, mostly for experimenting,
+but who knows. If someone takes the work and calibrates it properly it might turn out to something.
+
 ToDo
 ====
 * Adjust fake soft shadow calculation. It's an endless road..
@@ -58,12 +67,13 @@ curl it to some direction. If you fold paper completely, cylinder, curl happens 
 radius becomes zero, making it more of a 2D effect. And likewise folding the paper so
 that curl radius is constant most of the characteristics remain - most importantly there
 is a line - at the center of this 'cylinder' - which has constant slope not dependent on radius.
-Its distance from the point you're holding the paper varies only. Using such approach makes
-handling curl position based on touch events a lot easier compared to using a cone
+Its distance from the point you're holding the paper varies only. Keeping this in mind makes
+curl position handling based on touch events a lot easier compared to using a cone
 as solid curling is done around. For information on using a cone, it's highly recommended to take a look on W. Dana Nuon's [blog
 post](http://wdnuon.blogspot.com/2010/05/implementing-ibooks-page-curling-using.html)
 on the topic. Chris Luke's [article](http://blog.flirble.org/2010/10/08/the-anatomy-of-a-page-curl/)
-is a good read too.
+is a good read too, even though he came to pretty much the same conclusion as me,
+better to go with cylinder instead.
 
 Curl/cylinder is defined with three parameters, position, which is any point on a line collinear to
 curl. Direction vector which tells direction curl 'opens to'. And curl/cylinder

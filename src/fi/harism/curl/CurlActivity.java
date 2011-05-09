@@ -31,6 +31,10 @@ public class CurlActivity extends Activity {
 		mCurlView.setSizeChangedObserver(new SizeChangedObserver());
 		mCurlView.setCurrentIndex(index);
 		mCurlView.setBackgroundColor(0xFF202830);
+
+		// This is something somewhat experimental. Before uncommenting next
+		// line, please see method comments in CurlView.
+		// mCurlView.setEnableTouchPressure(true);
 	}
 
 	@Override
