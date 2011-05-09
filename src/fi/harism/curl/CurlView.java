@@ -201,18 +201,6 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		mPointerPos.y = me.getY();
 		mRenderer.translate(mPointerPos);
 
-		// Some sanity checking. While letting pointer position flow over the
-		// edge of a page sideways shouldn't be a problem, limiting it to page
-		// bounds doesn't do any harm either. Doing it once here saves some
-		// effort later on though.
-		if (mPointerPos.x > rightRect.right) {
-			mPointerPos.x = rightRect.right;
-		} else if (mViewMode == SHOW_ONE_PAGE && mPointerPos.x < rightRect.left) {
-			mPointerPos.x = rightRect.left;
-		} else if (mViewMode == SHOW_TWO_PAGES && mPointerPos.x < leftRect.left) {
-			mPointerPos.x = leftRect.left;
-		}
-
 		switch (me.getAction()) {
 		case MotionEvent.ACTION_DOWN: {
 
@@ -442,7 +430,6 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			RectF pageRect = mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT);
 			if (curlPos.x < pageRect.left) {
 				curlPos.x = pageRect.left;
-				curlDir.y = 0;
 			}
 			if (curlDir.y != 0) {
 				float diffX = curlPos.x - pageRect.left;
@@ -459,7 +446,6 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			RectF pageRect = mRenderer.getPageRect(CurlRenderer.PAGE_LEFT);
 			if (curlPos.x > pageRect.right) {
 				curlPos.x = pageRect.right;
-				curlDir.y = 0;
 			}
 			if (curlDir.y != 0) {
 				float diffX = curlPos.x - pageRect.right;
