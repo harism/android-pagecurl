@@ -58,6 +58,8 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	private long mAnimationStartTime;
 	private long mAnimationDurationTime = 300;
 	private int mAnimationTargetEvent;
+	
+	// Constants for mAnimationTargetEvent.
 	private static final int SET_CURL_TO_LEFT = 1;
 	private static final int SET_CURL_TO_RIGHT = 2;
 
