@@ -18,13 +18,17 @@ import android.opengl.GLU;
  */
 public class CurlRenderer implements GLSurfaceView.Renderer {
 
+	// Constants for changing view mode.
 	public static final int SHOW_ONE_PAGE = 1;
 	public static final int SHOW_TWO_PAGES = 2;
 	private int mViewMode = SHOW_ONE_PAGE;
 
+	// Constant for requesting left page rect.
 	public static final int PAGE_LEFT = 1;
+	// Constant for requesting right page rect.
 	public static final int PAGE_RIGHT = 2;
 
+	// Set to true for checking quickly how perspective projection looks.
 	private static final boolean USE_PERSPECTIVE_PROJECTION = false;
 
 	// Rect for render area.
