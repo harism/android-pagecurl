@@ -11,24 +11,24 @@ import android.graphics.Canvas;
 import android.graphics.PointF;
 import android.graphics.RectF;
 import android.opengl.GLUtils;
-import android.util.Log;
 
 /**
- * Class implementing actual curl.
+ * Class implementing actual curl/page rendering.
  * 
  * @author harism
  */
 public class CurlMesh {
 
-	// Flag for rendering some lines used for developing. Namely one showing
-	// line curl happens around and another one showing the direction from the
-	// position given.
-	private static final boolean DRAW_HELPERS = false;
+	// Flag for rendering some lines used for developing. Shows
+	// curl position and one for the direction from the
+	// position given. Comes handy once playing around with different
+	// ways for following pointer.
+	private static final boolean DRAW_CURL_POSITION = false;
 	// Flag for drawing polygon outlines. Using this flag crashes on emulator
 	// due to reason unknown to me. Leaving it here anyway as seeing polygon
 	// outlines gives good insight how original rectangle is divided.
 	private static final boolean DRAW_POLYGON_OUTLINES = false;
-	// Flag for enabling texture rendering. While this is likely something you
+	// Flag for texture rendering. While this is likely something you
 	// don't want to do it's been used for development purposes as texture
 	// rendering is rather slow on emulator.
 	private static final boolean DRAW_TEXTURE = true;
@@ -47,8 +47,8 @@ public class CurlMesh {
 	private boolean mFlipTexture = false;
 
 	// For testing purposes.
-	private int mHelperLinesCount;
-	private FloatBuffer mHelperLines;
+	private int mCurlPositionLinesCount;
+	private FloatBuffer mCurlPositionLines;
 
 	// Buffers for feeding rasterizer.
 	private FloatBuffer mVertices;
@@ -75,7 +75,9 @@ public class CurlMesh {
 	private Bitmap mBitmap;
 	private RectF mTextureRect = new RectF();
 
-	// Let's avoid using 'new' as much as possible.
+	// Let's avoid using 'new' as much as possible. Meaning we introduce arrays
+	// once here and reuse them on runtime. Doesn't really have very much effect
+	// but avoids some garbage collections from happening.
 	private Array<Vertex> mTempVertices;
 	private Array<Vertex> mIntersections;
 	private Array<Vertex> mOutputVertices;
@@ -128,13 +130,13 @@ public class CurlMesh {
 		mRectangle[0].mPenumbraX = mRectangle[1].mPenumbraX = mRectangle[1].mPenumbraY = mRectangle[3].mPenumbraY = -1;
 		mRectangle[0].mPenumbraY = mRectangle[2].mPenumbraX = mRectangle[2].mPenumbraY = mRectangle[3].mPenumbraX = 1;
 
-		if (DRAW_HELPERS) {
-			mHelperLinesCount = 3;
+		if (DRAW_CURL_POSITION) {
+			mCurlPositionLinesCount = 3;
 			ByteBuffer hvbb = ByteBuffer
-					.allocateDirect(mHelperLinesCount * 2 * 2 * 4);
+					.allocateDirect(mCurlPositionLinesCount * 2 * 2 * 4);
 			hvbb.order(ByteOrder.nativeOrder());
-			mHelperLines = hvbb.asFloatBuffer();
-			mHelperLines.position(0);
+			mCurlPositionLines = hvbb.asFloatBuffer();
+			mCurlPositionLines.position(0);
 		}
 
 		// There are 4 vertices from bounding rect, max 2 from adding split line
@@ -178,38 +180,37 @@ public class CurlMesh {
 	}
 
 	/**
-	 * Curl calculation.
+	 * Sets curl for this mesh.
 	 * 
 	 * @param curlPos
 	 *            Position for curl 'center'. Can be any point on line collinear
 	 *            to curl.
-	 * @param directionVec
-	 *            Curl direction.
+	 * @param curlDir
+	 *            Curl direction, should be normalized.
 	 * @param radius
 	 *            Radius of curl.
 	 */
-	public synchronized void curl(PointF curlPos, PointF directionVec,
-			double radius) {
+	public synchronized void curl(PointF curlPos, PointF curlDir, double radius) {
 
 		// First add some 'helper' lines used for development.
-		if (DRAW_HELPERS) {
-			mHelperLines.position(0);
+		if (DRAW_CURL_POSITION) {
+			mCurlPositionLines.position(0);
 
-			mHelperLines.put(curlPos.x);
-			mHelperLines.put(curlPos.y - 1.0f);
-			mHelperLines.put(curlPos.x);
-			mHelperLines.put(curlPos.y + 1.0f);
-			mHelperLines.put(curlPos.x - 1.0f);
-			mHelperLines.put(curlPos.y);
-			mHelperLines.put(curlPos.x + 1.0f);
-			mHelperLines.put(curlPos.y);
+			mCurlPositionLines.put(curlPos.x);
+			mCurlPositionLines.put(curlPos.y - 1.0f);
+			mCurlPositionLines.put(curlPos.x);
+			mCurlPositionLines.put(curlPos.y + 1.0f);
+			mCurlPositionLines.put(curlPos.x - 1.0f);
+			mCurlPositionLines.put(curlPos.y);
+			mCurlPositionLines.put(curlPos.x + 1.0f);
+			mCurlPositionLines.put(curlPos.y);
 
-			mHelperLines.put(curlPos.x);
-			mHelperLines.put(curlPos.y);
-			mHelperLines.put(curlPos.x + directionVec.x * 2);
-			mHelperLines.put(curlPos.y + directionVec.y * 2);
+			mCurlPositionLines.put(curlPos.x);
+			mCurlPositionLines.put(curlPos.y);
+			mCurlPositionLines.put(curlPos.x + curlDir.x * 2);
+			mCurlPositionLines.put(curlPos.y + curlDir.y * 2);
 
-			mHelperLines.position(0);
+			mCurlPositionLines.position(0);
 		}
 
 		// Actual 'curl' implementation starts here.
@@ -219,9 +220,9 @@ public class CurlMesh {
 			mTexCoords.position(0);
 		}
 
-		// Calculate curl direction.
-		double curlAngle = Math.acos(directionVec.x);
-		curlAngle = directionVec.y > 0 ? -curlAngle : curlAngle;
+		// Calculate curl angle from direction.
+		double curlAngle = Math.acos(curlDir.x);
+		curlAngle = curlDir.y > 0 ? -curlAngle : curlAngle;
 
 		// Initiate rotated rectangle which's is translated to curlPos and
 		// rotated so that curl direction heads to right (1,0). Vertices are
@@ -255,8 +256,8 @@ public class CurlMesh {
 		// opposing corner from vertex 0. So we are calculating distance from
 		// vertex 0 to vertices 2 and 3 - and altering line indices if needed.
 		// Also vertices/lines are given in an order first one has x -coordinate
-		// at least the latter one. This property is used in getScanLines to see
-		// if there is an intersection.
+		// at least the latter one. This property is used in getIntersections to
+		// see if there is an intersection.
 		int lines[][] = { { 0, 1 }, { 0, 2 }, { 1, 3 }, { 2, 3 } };
 		{
 			// TODO: There really has to be more 'easier' way of doing this -
@@ -298,7 +299,7 @@ public class CurlMesh {
 		}
 		// As mRotatedVertices is ordered regarding x -coordinate, adding
 		// this scan line produces scan area picking up vertices which are
-		// rotated completely. One could say 'until infinity'
+		// rotated completely. One could say 'until infinity'.
 		mScanLines.add(mRotatedVertices.get(3).mPosX - 1);
 
 		// Start from right most vertex. Pretty much the same as first scan area
@@ -306,10 +307,10 @@ public class CurlMesh {
 		double scanXmax = mRotatedVertices.get(0).mPosX + 1;
 
 		for (int i = 0; i < mScanLines.size(); ++i) {
-			// Once we have scanXmin and scanXmax we have a scan area in which
-			// this loop iterates.
+			// Once we have scanXmin and scanXmax we have a scan area to start
+			// working with.
 			double scanXmin = mScanLines.get(i);
-			// First iterate 'original' vertices within scan area.
+			// First iterate 'original' rectangle vertices within scan area.
 			for (int j = 0; j < mRotatedVertices.size(); ++j) {
 				Vertex v = mRotatedVertices.get(j);
 				// Test if vertex lies within this scan area.
@@ -322,8 +323,8 @@ public class CurlMesh {
 					Vertex n = mTempVertices.remove(0);
 					n.set(v);
 					// This is done solely for triangulation reasons. Given a
-					// rotated rectangle there are max 2 vertices having
-					// intersection on opposite side of rectangle.
+					// rotated rectangle it has max 2 vertices having
+					// intersection.
 					Array<Vertex> intersections = getIntersections(
 							mRotatedVertices, lines, n.mPosX);
 					// In a sense one could say we're adding vertices always in
@@ -341,10 +342,8 @@ public class CurlMesh {
 						mOutputVertices.addAll(intersections);
 					} else {
 						// There should never be more than 1 intersecting
-						// vertex.
-						// But if it happens as a fall back simply skip
+						// vertex. But if it happens as a fallback simply skip
 						// everything.
-						Log.d("CurlMesh", "Intersections size > 1");
 						mTempVertices.add(n);
 						mTempVertices.addAll(intersections);
 					}
@@ -377,7 +376,6 @@ public class CurlMesh {
 				// was handled already earlier once iterating through
 				// mRotatedVertices, in latter case it's better to avoid doing
 				// anything with them.
-				Log.d("CurlMesh", "Intersections size != 0 or 2");
 				mTempVertices.addAll(intersections);
 			}
 
@@ -423,7 +421,7 @@ public class CurlMesh {
 					}
 				}
 
-				// Rotate vertex back to 'world' coordinates.
+				// Move vertex back to 'world' coordinates.
 				v.rotateZ(curlAngle);
 				v.translate(curlPos.x, curlPos.y);
 				addVertex(v);
@@ -434,8 +432,8 @@ public class CurlMesh {
 					sv.mPosX = v.mPosX;
 					sv.mPosY = v.mPosY;
 					sv.mPosZ = v.mPosZ;
-					sv.mPenumbraX = (v.mPosZ / 2) * -directionVec.x;
-					sv.mPenumbraY = (v.mPosZ / 2) * -directionVec.y;
+					sv.mPenumbraX = (v.mPosZ / 2) * -curlDir.x;
+					sv.mPenumbraY = (v.mPosZ / 2) * -curlDir.y;
 					sv.mPenumbraColor = v.mPosZ / radius;
 					int idx = (mDropShadowVertices.size() + 1) / 2;
 					mDropShadowVertices.add(idx, sv);
@@ -511,7 +509,7 @@ public class CurlMesh {
 	}
 
 	/**
-	 * Draw our mesh.
+	 * Draws our mesh.
 	 */
 	public synchronized void draw(GL10 gl) {
 		// First allocate texture if there is not one yet.
@@ -574,7 +572,7 @@ public class CurlMesh {
 		// Draw front facing texture.
 		// TODO: Decide whether it's really needed to have alpha blending for
 		// front facing texture. If not, GL_BLEND isn't needed, possibly
-		// increasing performance.
+		// increasing performance. The heck, is it needed at all?
 		if (DRAW_TEXTURE) {
 			gl.glEnable(GL10.GL_BLEND);
 			gl.glEnable(GL10.GL_TEXTURE_2D);
@@ -611,13 +609,13 @@ public class CurlMesh {
 			gl.glDisable(GL10.GL_BLEND);
 		}
 
-		if (DRAW_HELPERS) {
+		if (DRAW_CURL_POSITION) {
 			gl.glEnable(GL10.GL_BLEND);
 			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
 			gl.glLineWidth(1.0f);
 			gl.glColor4f(1.0f, 0.5f, 0.5f, 1.0f);
-			gl.glVertexPointer(2, GL10.GL_FLOAT, 0, mHelperLines);
-			gl.glDrawArrays(GL10.GL_LINES, 0, mHelperLinesCount * 2);
+			gl.glVertexPointer(2, GL10.GL_FLOAT, 0, mCurlPositionLines);
+			gl.glDrawArrays(GL10.GL_LINES, 0, mCurlPositionLinesCount * 2);
 			gl.glDisable(GL10.GL_BLEND);
 		}
 
@@ -685,7 +683,7 @@ public class CurlMesh {
 			int newW = getNextHighestPO2(w);
 			int newH = getNextHighestPO2(h);
 			// TODO: Is there another way to create a bigger Bitmap and copy
-			// original Bitmap to it more efficiently?
+			// original Bitmap to it more efficiently? Immutable bitmap anyone?
 			mBitmap = Bitmap.createBitmap(newW, newH, bitmap.getConfig());
 			Canvas c = new Canvas(mBitmap);
 			c.drawBitmap(bitmap, 0, 0, null);
@@ -803,7 +801,7 @@ public class CurlMesh {
 	}
 
 	/**
-	 * Sets texture coordinates to mRectange vertices.
+	 * Sets texture coordinates to mRectangle vertices.
 	 */
 	private synchronized void setTexCoords(float left, float top, float right,
 			float bottom) {
