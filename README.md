@@ -31,6 +31,11 @@ on using touch pressure information. If you go and call CurlView.setEnableTouchP
 curl radius will be adjusted based on the touch pressure. The more you press, the smaller it gets.
 Currently it's a vast one line 'hack', simply to show off it's there, mostly for experimenting,
 but who knows. If someone takes the work and calibrates it properly it might turn out to something.
+* Z-buffering, really, we don't need to do depth check giving us a minor performance boost.
+* Lightning, it's a more of a trick we use here, leaving us with something very close to flat shading actually.
+* Perspective projection. Since it's very much easier to map render target to screen size using
+orthogonal projection it's used by default. For quick prototyping you can enable it though,
+check USE_PERSPECTIVE_PROJECTION flag in CurlRenderer.
 
 ToDo
 ====
