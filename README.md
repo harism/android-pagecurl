@@ -39,9 +39,9 @@ check USE_PERSPECTIVE_PROJECTION flag in CurlRenderer.
 
 ToDo
 ====
-* Adjust fake soft shadow calculation. Current 'Drop shadow', cast behind curl, implementation
+* Adjust fake soft shadow calculation. Current 'drop shadow', cast behind curl, implementation
 is not exactly what one wants necessarily. It might be better strategy to leave some 'softness'
-for situations in which radius is close to zero. Currently it means show is decreased to
+for situations in which radius is close to zero. Currently it means shadow is decreased to
 non-existent. Well, that's how shadows work, but considering from usability side..
 * Add some details to make it a bit more book alike.
 
