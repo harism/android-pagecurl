@@ -1,10 +1,8 @@
 Introduction
 ============
 Project for implementing 'page curl' effect on Android + OpenGL ES 1.0 (possibly 1.1/2.0 too if there's clear advantage in using them).
-Feel free to use everything found here on what ever purpose you can imagine of. With the exception of
-images being used as an example as they are randomly selected from Google Images. And application icon is borrowed
-from [deviantART](http://browse.deviantart.com/customization/icons/dock/#/dz0w8n). Besides these
-exceptions, let it be as-is implementation or - maybe more preferably - as an example for implementing your own effect.
+
+The source code is released under Apache 2.0 and can be used in commercial or personal projects. See LICENSE for more information. See NOTICE for any exceptions, these include namely the application icon and images used in the demo. Besides these exceptions, let it be as-is implementation or - maybe more preferably - as an example for implementing your own effect.
 
 For the ones without Android development environment, and/or people willing to take only
 a brief look on what's happening here, there are a few video captures. While person responsible for capturing
