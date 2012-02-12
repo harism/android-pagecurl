@@ -548,6 +548,7 @@ public class CurlMesh {
 		if (DRAW_TEXTURE && mBitmap != null) {
 			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
 			GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, mBitmap, 0);
+			mBitmap.recycle();
 			mBitmap = null;
 		}
 
@@ -698,12 +699,21 @@ public class CurlMesh {
 			// be power of two.
 			int newW = getNextHighestPO2(w);
 			int newH = getNextHighestPO2(h);
+			//Recycle the previous bitmap if it still exists.
+			if(mBitmap != null){
+				mBitmap.recycle();
+				mBitmap = null;
+			}
 			// TODO: Is there another way to create a bigger Bitmap and copy
 			// original Bitmap to it more efficiently? Immutable bitmap anyone?
 			mBitmap = Bitmap.createBitmap(newW, newH, bitmap.getConfig());
 			Canvas c = new Canvas(mBitmap);
 			c.drawBitmap(bitmap, 0, 0, null);
-
+			
+			//Recycle the now unused bitmap
+			bitmap.recycle();
+			bitmap = null;
+			
 			// Calculate final texture coordinates.
 			float texX = (float) w / newW;
 			float texY = (float) h / newH;
