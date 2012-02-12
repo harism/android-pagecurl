@@ -12,7 +12,7 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
-*/
+ */
 
 package fi.harism.curl;
 
@@ -74,7 +74,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	private long mAnimationStartTime;
 	private long mAnimationDurationTime = 300;
 	private int mAnimationTargetEvent;
-	
+
 	// Constants for mAnimationTargetEvent.
 	private static final int SET_CURL_TO_LEFT = 1;
 	private static final int SET_CURL_TO_RIGHT = 2;
@@ -109,7 +109,8 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	}
 
 	/**
-	 * Set current page index.
+	 * Get current page index. Page indices are zero based values presenting
+	 * page being shown on right side of the book.
 	 */
 	public int getCurrentIndex() {
 		return mCurrentIndex;
@@ -357,7 +358,8 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	}
 
 	/**
-	 * Set page index.
+	 * Set page index. Page indices are zero based values presenting page being
+	 * shown on right side of the book.
 	 */
 	public void setCurrentIndex(int index) {
 		if (mBitmapProvider == null || index <= 0) {
@@ -560,9 +562,9 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			break;
 		}
 
-			// On left side curl, left page is assigned to curled page. And if
-			// there are more bitmaps available before currentIndex, new bitmap
-			// is loaded into left page.
+		// On left side curl, left page is assigned to curled page. And if
+		// there are more bitmaps available before currentIndex, new bitmap
+		// is loaded into left page.
 		case CURL_LEFT: {
 			// Remove meshes from renderer.
 			mRenderer.removeCurlMesh(mPageLeft);
