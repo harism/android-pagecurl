@@ -42,6 +42,8 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 
 	private boolean mRenderLeftPage = true;
 	private boolean mAllowLastPageCurl = true;
+	// Allow 2 pages landscape mode
+	private boolean mAllow2PagesLandscape = false;
 
 	// Page meshes. Left and right meshes are 'static' while curl is used to
 	// show page flipping.
@@ -137,15 +139,34 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 				mPageCurl = curl;
 				mPageRight = right;
 				// If we were curling left page update current index.
-				if (mCurlState == CURL_LEFT) {
-					mCurrentIndex--;
+				if (mViewMode == SHOW_ONE_PAGE || !mAllow2PagesLandscape) {
+					if (mCurlState == CURL_LEFT) {
+						mCurrentIndex--;
+					}
+				} else {
+					if (mCurlState == CURL_LEFT) {
+						mCurrentIndex=mCurrentIndex-2;
+						mPageRight.swapSheet();
+						/*CAGS: Alternate method to swap sheets but inefficient in time at running,
+						 * needs to load 4 images in every curl instead 2
+						 *  Bitmap bitmap = mBitmapProvider.getBitmap(mPageBitmapWidth,
+								mPageBitmapHeight, mCurrentIndex);//CAGS
+							Bitmap bitmap2 = mBitmapProvider.getBitmap(mPageBitmapWidth,
+								mPageBitmapHeight,  mCurrentIndex+1);//CAGS
+							mPageRight.setBitmap(bitmap,bitmap2);
+						*/
+					}
 				}
 			} else if (mAnimationTargetEvent == SET_CURL_TO_LEFT) {
 				// Switch curled page to left.
 				CurlMesh left = mPageCurl;
 				CurlMesh curl = mPageLeft;
 				left.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
-				left.setFlipTexture(true);
+				if (mViewMode == SHOW_ONE_PAGE || !mAllow2PagesLandscape) {
+					left.setFlipTexture(true);
+				}else{
+					left.setFlipTexture(false);
+				}
 				left.reset();
 				mRenderer.removeCurlMesh(curl);
 				if (!mRenderLeftPage) {
@@ -154,8 +175,24 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 				mPageCurl = curl;
 				mPageLeft = left;
 				// If we were curling right page update current index.
-				if (mCurlState == CURL_RIGHT) {
-					mCurrentIndex++;
+				if (mViewMode == SHOW_ONE_PAGE || !mAllow2PagesLandscape) {
+					if (mCurlState == CURL_RIGHT) {
+						mCurrentIndex++;
+					}
+				} else {
+					// If we were curling right page update current index.
+					if (mCurlState == CURL_RIGHT) {
+						mCurrentIndex=mCurrentIndex+2;
+						mPageLeft.swapSheet();
+						/*CAGS: Alternate method to swap sheets but inefficient in time at running,
+						 * needs to load 4 images in every curl instead 2
+						 *	Bitmap bitmap = mBitmapProvider.getBitmap(mPageBitmapWidth,
+								mPageBitmapHeight, mCurrentIndex+1);//CAGS
+							Bitmap bitmap2 = mBitmapProvider.getBitmap(mPageBitmapWidth,
+								mPageBitmapHeight,  mCurrentIndex);//CAGS
+							mPageLeft.setBitmap(bitmap,bitmap2);
+						*/
+					}
 				}
 			}
 			mCurlState = CURL_NONE;
@@ -217,7 +254,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		if (mEnableTouchPressure) {
 			mPointerPos.mPressure = me.getPressure();
 		} else {
-			mPointerPos.mPressure = 0f;
+			mPointerPos.mPressure = 0.8f;
 		}
 
 		switch (me.getAction()) {
@@ -417,13 +454,26 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		switch (viewMode) {
 		case SHOW_ONE_PAGE:
 			mViewMode = viewMode;
+			CurlMesh.setALPHA(.2f);
+			mPageLeft.setFlipTexture(true);
 			mRenderer.setViewMode(CurlRenderer.SHOW_ONE_PAGE);
 			break;
 		case SHOW_TWO_PAGES:
 			mViewMode = viewMode;
+			if (mAllow2PagesLandscape){
+				CurlMesh.setALPHA(1f);
+				mPageLeft.setFlipTexture(false);
+			}
 			mRenderer.setViewMode(CurlRenderer.SHOW_TWO_PAGES);
 			break;
 		}
+	}
+	
+	/**
+	 * If set to true, 2 pages landscape mode is enabled
+	 */
+	public void set2PagesLandscape(boolean Allow2PagesLandscape) {
+		mAllow2PagesLandscape = Allow2PagesLandscape;
 	}
 
 	/**
@@ -510,7 +560,8 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	}
 
 	/**
-	 * Switches meshes and loads new bitmaps if available.
+	 * Switches meshes and loads new bitmaps if available. Updated 
+	 * to support 2 pages in landscape
 	 */
 	private void startCurl(int page) {
 		switch (page) {
@@ -528,28 +579,53 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			CurlMesh curl = mPageRight;
 			mPageRight = mPageCurl;
 			mPageCurl = curl;
-
+			
+			if (mViewMode == SHOW_ONE_PAGE || !mAllow2PagesLandscape) {
 			// If there is something to show on left page, simply add it to
 			// renderer.
-			if (mCurrentIndex > 0) {
-				mPageLeft
-						.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
-				mPageLeft.reset();
-				if (mRenderLeftPage) {
-					mRenderer.addCurlMesh(mPageLeft);
+				if (mCurrentIndex > 0) {
+					mPageLeft.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
+					mPageLeft.reset();
+					if (mRenderLeftPage) {
+						mRenderer.addCurlMesh(mPageLeft);
+					}
 				}
-			}
-
-			// If there is new/next available, set it to right page.
-			if (mCurrentIndex < mBitmapProvider.getBitmapCount() - 1) {
-				Bitmap bitmap = mBitmapProvider.getBitmap(mPageBitmapWidth,
-						mPageBitmapHeight, mCurrentIndex + 1);
-				mPageRight.setBitmap(bitmap);
-				mPageRight.setRect(mRenderer
-						.getPageRect(CurlRenderer.PAGE_RIGHT));
-				mPageRight.setFlipTexture(false);
-				mPageRight.reset();
-				mRenderer.addCurlMesh(mPageRight);
+				// If there is new/next available, set it to right page.
+				if (mCurrentIndex < mBitmapProvider.getBitmapCount() - 1) {
+					Bitmap bitmap = mBitmapProvider.getBitmap(mPageBitmapWidth,
+							mPageBitmapHeight, mCurrentIndex + 1);
+					mPageRight.setBitmap(bitmap,null);
+					mPageRight.setRect(mRenderer
+							.getPageRect(CurlRenderer.PAGE_RIGHT));
+					mPageRight.setFlipTexture(false);
+					mPageRight.reset();
+					mRenderer.addCurlMesh(mPageRight);
+				}
+			} else {
+				if (mCurrentIndex > 0) {
+					mPageLeft
+							.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
+					mPageLeft.reset();
+					if (mRenderLeftPage) {
+						mRenderer.addCurlMesh(mPageLeft);
+					}
+				}
+				if (mCurrentIndex < mBitmapProvider.getBitmapCount() - 2) {
+					Bitmap bitmap = mBitmapProvider.getBitmap(mPageBitmapWidth,
+							mPageBitmapHeight, mCurrentIndex + 2);
+					Bitmap bitmap2;
+					if (mCurrentIndex < mBitmapProvider.getBitmapCount() - 3) {
+					bitmap2 = mBitmapProvider.getBitmap(mPageBitmapWidth,
+							mPageBitmapHeight, mCurrentIndex + 3);
+					}else{
+					bitmap2 = bitmap;
+					}
+					mPageRight.setBitmap(bitmap,bitmap2);
+					mPageRight.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT));
+					mPageRight.setFlipTexture(false);
+					mPageRight.reset();
+					mRenderer.addCurlMesh(mPageRight);
+				}
 			}
 
 			// Add curled page to renderer.
@@ -576,17 +652,34 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			mPageLeft = mPageCurl;
 			mPageCurl = curl;
 
+			if (mViewMode == SHOW_ONE_PAGE || !mAllow2PagesLandscape) {
 			// If there is new/previous bitmap available load it to left page.
-			if (mCurrentIndex > 1) {
-				Bitmap bitmap = mBitmapProvider.getBitmap(mPageBitmapWidth,
-						mPageBitmapHeight, mCurrentIndex - 2);
-				mPageLeft.setBitmap(bitmap);
-				mPageLeft
-						.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
-				mPageLeft.setFlipTexture(true);
-				mPageLeft.reset();
-				if (mRenderLeftPage) {
-					mRenderer.addCurlMesh(mPageLeft);
+				if (mCurrentIndex > 1) {
+					Bitmap bitmap = mBitmapProvider.getBitmap(mPageBitmapWidth,
+							mPageBitmapHeight, mCurrentIndex - 2);
+					mPageLeft.setBitmap(bitmap,null);
+					mPageLeft
+							.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
+					mPageLeft.setFlipTexture(true);
+					mPageLeft.reset();
+					if (mRenderLeftPage) {
+						mRenderer.addCurlMesh(mPageLeft);
+					}
+				}
+			} else {
+				if (mCurrentIndex > 2) {
+					Bitmap bitmap = mBitmapProvider.getBitmap(mPageBitmapWidth,
+							mPageBitmapHeight, mCurrentIndex - 3);
+					Bitmap bitmap2 = mBitmapProvider.getBitmap(mPageBitmapWidth,
+							mPageBitmapHeight,  mCurrentIndex-4);
+					mPageLeft.setBitmap(bitmap,bitmap2);
+					mPageLeft
+							.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
+					mPageLeft.setFlipTexture(false);
+					mPageLeft.reset();
+					if (mRenderLeftPage) {
+						mRenderer.addCurlMesh(mPageLeft);
+					}
 				}
 			}
 
@@ -606,7 +699,12 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			} else {
 				mPageCurl
 						.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
-				mPageCurl.setFlipTexture(true);
+				if (mAllow2PagesLandscape){
+					mPageCurl.setFlipTexture(false);					
+				} else {
+					mPageCurl.setFlipTexture(true);
+				}
+				
 			}
 			mPageCurl.reset();
 			mRenderer.addCurlMesh(mPageCurl);
@@ -632,49 +730,112 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		mRenderer.removeCurlMesh(mPageRight);
 		mRenderer.removeCurlMesh(mPageCurl);
 
-		int leftIdx = mCurrentIndex - 1;
-		int rightIdx = mCurrentIndex;
-		int curlIdx = -1;
-		if (mCurlState == CURL_LEFT) {
-			curlIdx = leftIdx;
-			leftIdx--;
-		} else if (mCurlState == CURL_RIGHT) {
-			curlIdx = rightIdx;
-			rightIdx++;
-		}
+		if (mViewMode == SHOW_ONE_PAGE || !mAllow2PagesLandscape) {
+			int leftIdx = mCurrentIndex - 1;
+			int rightIdx = mCurrentIndex;
+			int curlIdx = -1;
+			if (mCurlState == CURL_LEFT) {
+				curlIdx = leftIdx;
+				leftIdx--;
+			} else if (mCurlState == CURL_RIGHT) {
+				curlIdx = rightIdx;
+				rightIdx++;
+			}
 
-		if (rightIdx >= 0 && rightIdx < mBitmapProvider.getBitmapCount()) {
-			Bitmap bitmap = mBitmapProvider.getBitmap(mPageBitmapWidth,
-					mPageBitmapHeight, rightIdx);
-			mPageRight.setBitmap(bitmap);
-			mPageRight.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT));
-			mPageRight.reset();
-			mRenderer.addCurlMesh(mPageRight);
-		}
-		if (leftIdx >= 0 && leftIdx < mBitmapProvider.getBitmapCount()) {
-			Bitmap bitmap = mBitmapProvider.getBitmap(mPageBitmapWidth,
-					mPageBitmapHeight, leftIdx);
-			mPageLeft.setBitmap(bitmap);
-			mPageLeft.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
-			mPageLeft.reset();
-			if (mRenderLeftPage) {
-				mRenderer.addCurlMesh(mPageLeft);
+			if (rightIdx >= 0 && rightIdx < mBitmapProvider.getBitmapCount()) {
+				Bitmap bitmap = mBitmapProvider.getBitmap(mPageBitmapWidth,
+						mPageBitmapHeight, rightIdx);
+				mPageRight.setBitmap(bitmap,null);
+				mPageRight.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT));
+				mPageRight.reset();
+				mRenderer.addCurlMesh(mPageRight);
 			}
-		}
-		if (curlIdx >= 0 && curlIdx < mBitmapProvider.getBitmapCount()) {
-			Bitmap bitmap = mBitmapProvider.getBitmap(mPageBitmapWidth,
-					mPageBitmapHeight, curlIdx);
-			mPageCurl.setBitmap(bitmap);
-			if (mCurlState == CURL_RIGHT
-					|| (mCurlState == CURL_LEFT && mViewMode == SHOW_TWO_PAGES)) {
-				mPageCurl.setRect(mRenderer
-						.getPageRect(CurlRenderer.PAGE_RIGHT));
+			if (leftIdx >= 0 && leftIdx < mBitmapProvider.getBitmapCount()) {
+				Bitmap bitmap = mBitmapProvider.getBitmap(mPageBitmapWidth,
+						mPageBitmapHeight, leftIdx);
+				mPageLeft.setBitmap(bitmap,null);
+				mPageLeft.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
+				mPageLeft.reset();
+				if (mRenderLeftPage) {
+					mRenderer.addCurlMesh(mPageLeft);
+				}
+			}
+			if (curlIdx >= 0 && curlIdx < mBitmapProvider.getBitmapCount()) {
+				Bitmap bitmap = mBitmapProvider.getBitmap(mPageBitmapWidth,
+						mPageBitmapHeight, curlIdx);
+				mPageCurl.setBitmap(bitmap,null);
+				if (mCurlState == CURL_RIGHT
+						|| (mCurlState == CURL_LEFT && mViewMode == SHOW_TWO_PAGES)) {
+					mPageCurl.setRect(mRenderer
+							.getPageRect(CurlRenderer.PAGE_RIGHT));
+				} else {
+					mPageCurl
+							.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
+				}
+				mPageCurl.reset();
+				mRenderer.addCurlMesh(mPageCurl);
+			}
+		} else {
+			int leftIdx;
+			int rightIdx;
+			int curlIdx = -1;
+			if (mCurrentIndex % 2 == 0){
+				leftIdx = mCurrentIndex - 1;
+				rightIdx = mCurrentIndex;
 			} else {
-				mPageCurl
-						.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
+				leftIdx = mCurrentIndex;
+				rightIdx = mCurrentIndex +1;
+				mCurrentIndex = rightIdx;
 			}
-			mPageCurl.reset();
-			mRenderer.addCurlMesh(mPageCurl);
+			if (mCurlState == CURL_LEFT) {
+				curlIdx = leftIdx;
+				leftIdx--;
+			} else if (mCurlState == CURL_RIGHT) {
+				curlIdx = rightIdx;
+				rightIdx++;
+			}
+			
+			
+			if (rightIdx >= 0 && rightIdx < mBitmapProvider.getBitmapCount()-1) {
+				Bitmap bitmap = mBitmapProvider.getBitmap(mPageBitmapWidth,
+						mPageBitmapHeight, rightIdx);
+				Bitmap bitmap2 = mBitmapProvider.getBitmap(mPageBitmapWidth,
+						mPageBitmapHeight, rightIdx+1);
+				mPageRight.setBitmap(bitmap,bitmap2);
+				
+				mPageRight.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT));
+				mPageRight.reset();
+				mRenderer.addCurlMesh(mPageRight);
+			}
+			if (leftIdx >= 0 && leftIdx < mBitmapProvider.getBitmapCount()) {
+				Bitmap bitmap = mBitmapProvider.getBitmap(mPageBitmapWidth,
+						mPageBitmapHeight, leftIdx);
+				Bitmap bitmap2 = mBitmapProvider.getBitmap(mPageBitmapWidth,
+						mPageBitmapHeight, leftIdx-1);
+				mPageLeft.setBitmap(bitmap,bitmap2);
+				mPageLeft.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
+				mPageLeft.reset();
+				if (mRenderLeftPage) {
+					mRenderer.addCurlMesh(mPageLeft);
+				}
+			}
+			if (curlIdx >= 0 && curlIdx < mBitmapProvider.getBitmapCount()-1) {
+				Bitmap bitmap = mBitmapProvider.getBitmap(mPageBitmapWidth,
+						mPageBitmapHeight, curlIdx);
+				Bitmap bitmap2 = mBitmapProvider.getBitmap(mPageBitmapWidth,
+						mPageBitmapHeight, curlIdx+1);
+				mPageCurl.setBitmap(bitmap,bitmap2);
+				if (mCurlState == CURL_RIGHT
+						|| (mCurlState == CURL_LEFT && mViewMode == SHOW_TWO_PAGES)) {
+					mPageCurl.setRect(mRenderer
+							.getPageRect(CurlRenderer.PAGE_RIGHT));
+				} else {
+					mPageCurl
+							.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
+				}
+				mPageCurl.reset();
+				mRenderer.addCurlMesh(mPageCurl);
+			}
 		}
 	}
 
@@ -721,7 +882,12 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			// Actual curl position calculation.
 			if (dist >= curlLen) {
 				double translate = (dist - curlLen) / 2;
-				mCurlPos.x -= mCurlDir.x * translate / dist;
+				if(mViewMode == SHOW_TWO_PAGES){
+					mCurlPos.x -= mCurlDir.x * translate / dist;
+				}else{
+					float pageLeftX = mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT).left;
+					radius = Math.max(Math.min(mCurlPos.x - pageLeftX, radius), 0f);
+				}
 				mCurlPos.y -= mCurlDir.y * translate / dist;
 			} else {
 				double angle = Math.PI * Math.sqrt(dist / curlLen);
@@ -729,8 +895,6 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 				mCurlPos.x += mCurlDir.x * translate / dist;
 				mCurlPos.y += mCurlDir.y * translate / dist;
 			}
-
-			setCurlPos(mCurlPos, mCurlDir, radius);
 		}
 		// Otherwise we'll let curl follow pointer position.
 		else if (mCurlState == CURL_LEFT) {
@@ -743,9 +907,9 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			mCurlPos.x -= Math.min(pageRightX - mCurlPos.x, radius);
 			mCurlDir.x = mCurlPos.x + mDragStartPos.x;
 			mCurlDir.y = mCurlPos.y - mDragStartPos.y;
-
-			setCurlPos(mCurlPos, mCurlDir, radius);
 		}
+
+		setCurlPos(mCurlPos, mCurlDir, radius);
 	}
 
 	/**

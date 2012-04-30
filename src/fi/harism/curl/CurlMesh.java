@@ -24,6 +24,7 @@ import javax.microedition.khronos.opengles.GL10;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Matrix;
 import android.graphics.PointF;
 import android.graphics.RectF;
 import android.opengl.GLUtils;
@@ -57,10 +58,17 @@ public class CurlMesh {
 	private static final float[] SHADOW_OUTER_COLOR = { 0f, 0f, 0f, .0f };
 
 	// Alpha values for front and back facing texture.
-	private static final double BACKFACE_ALPHA = .2f;
+	// CAGS: Modified to avoid transparency in landscape
+	private static double BACKFACE_ALPHA = 1f;
+	//private static final double BACKFACE_ALPHA = .2f;
 	private static final double FRONTFACE_ALPHA = 1f;
 	// Boolean for 'flipping' texture sideways.
 	private boolean mFlipTexture = false;
+	
+	// CAGS: Method to change Alpha value landscape/portraid
+	public static void setALPHA (double value){
+		BACKFACE_ALPHA = value;
+	}
 
 	// For testing purposes.
 	private int mCurlPositionLinesCount;
@@ -90,6 +98,12 @@ public class CurlMesh {
 	private int[] mTextureIds;
 	private Bitmap mBitmap;
 	private RectF mTextureRect = new RectF();
+	
+	// CAGS : Added some new needed variables
+	private Bitmap mBitmapB;
+	private int mWidthAux;
+	private boolean mNewTex = false;
+	//public boolean mSwapSheet = false;
 
 	// Let's avoid using 'new' as much as possible. Meaning we introduce arrays
 	// once here and reuse them on runtime. Doesn't really have very much effect
@@ -531,8 +545,8 @@ public class CurlMesh {
 		// First allocate texture if there is not one yet.
 		if (DRAW_TEXTURE && mTextureIds == null) {
 			// Generate texture.
-			mTextureIds = new int[1];
-			gl.glGenTextures(1, mTextureIds, 0);
+			mTextureIds = new int[2];
+			gl.glGenTextures(2, mTextureIds, 0);
 			// Set texture attributes.
 			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
 			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MIN_FILTER,
@@ -543,18 +557,45 @@ public class CurlMesh {
 					GL10.GL_CLAMP_TO_EDGE);
 			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_T,
 					GL10.GL_CLAMP_TO_EDGE);
+			//CAGS: Back Texture 
+			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[1]);
+			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MIN_FILTER,
+					GL10.GL_LINEAR);
+			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MAG_FILTER,
+					GL10.GL_LINEAR);
+			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_S,
+					GL10.GL_CLAMP_TO_EDGE);
+			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_T,
+					GL10.GL_CLAMP_TO_EDGE);	
 		}
 		// If mBitmap != null we have a new texture.
-		if (DRAW_TEXTURE && mBitmap != null) {
+		if (DRAW_TEXTURE && mNewTex) {	
 			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
 			GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, mBitmap, 0);
-			mBitmap = null;
-		}
+			//mBitmap.recycle();
+			//mBitmap = null;
+			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[1]);
+			GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, mBitmapB, 0);
+			//mBitmapB.recycle();
+			//mBitmapB = null;
+			mNewTex = false;
+	}	
 
 		if (DRAW_TEXTURE) {
 			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
 		}
-
+		
+		/* CAGS: Invert the textures if mSwapSheet == true -> Not acomplished due 
+		 * to not  figured out where to put again swapSheet = false and avoid a bad behaivor
+		 * of the curled page
+		if (DRAW_TEXTURE) {
+			if (!mSwapSheet){	
+				gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
+			}else{
+				gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[1]);
+			}
+		}*/
+		
 		// Some 'global' settings.
 		gl.glEnableClientState(GL10.GL_VERTEX_ARRAY);
 
@@ -597,6 +638,20 @@ public class CurlMesh {
 			gl.glDisable(GL10.GL_TEXTURE_2D);
 			gl.glDisable(GL10.GL_BLEND);
 		}
+		if (DRAW_TEXTURE) {
+			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[1]);
+		}
+		/* CAGS: Invert the textures if mSwapSheet == true -> Not acomplished due 
+		 * to not  figured out where to put again swapSheet = false and avoid a bad behaivor
+		 * of the curled page
+		   if (!mSwapSheet){	
+				gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[1]);
+			}else{
+				gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
+				//mSwapSheet=false;
+			}
+		}*/
+		
 		int backStartIdx = Math.max(0, mVerticesCountFront - 2);
 		int backCount = mVerticesCountFront + mVerticesCountBack - backStartIdx;
 		// Draw blank / 'white' back facing vertices.
@@ -688,7 +743,7 @@ public class CurlMesh {
 	/**
 	 * Sets new texture for this mesh.
 	 */
-	public synchronized void setBitmap(Bitmap bitmap) {
+	public synchronized void setBitmap(Bitmap bitmap, Bitmap bitmapB) {
 		if (DRAW_TEXTURE) {
 			// Bitmap original size.
 			int w = bitmap.getWidth();
@@ -698,12 +753,53 @@ public class CurlMesh {
 			// be power of two.
 			int newW = getNextHighestPO2(w);
 			int newH = getNextHighestPO2(h);
+			//Recycle the previous bitmap if it still exists.
+			if(mBitmap != null){
+				mBitmap.recycle();
+				mBitmap = null;
+			}
+			
+			if(mBitmapB != null){
+				mBitmapB.recycle();
+				mBitmapB = null;
+			}
 			// TODO: Is there another way to create a bigger Bitmap and copy
 			// original Bitmap to it more efficiently? Immutable bitmap anyone?
 			mBitmap = Bitmap.createBitmap(newW, newH, bitmap.getConfig());
 			Canvas c = new Canvas(mBitmap);
 			c.drawBitmap(bitmap, 0, 0, null);
-
+			//Recycle the now unused bitmap
+			bitmap.recycle();
+			bitmap = null;
+			
+			if (bitmapB != null){
+				// Bitmap original size.
+				int w2 = bitmapB.getWidth();
+				int h2 = bitmapB.getHeight();
+				// Bitmap size expanded to next power of two. This is done due to
+				// the requirement on many devices, texture width and height should
+				// be power of two.
+				int newW2 = getNextHighestPO2(w2);
+				int newH2 = getNextHighestPO2(h2);
+				// TODO: Is there another way to create a bigger Bitmap and copy
+				// original Bitmap to it more efficiently? Immutable bitmap anyone?
+				mBitmapB= Bitmap.createBitmap(newW2, newH2, bitmapB.getConfig());
+				Canvas c2 = new Canvas(mBitmapB);				
+				//CAGS: Flip Back facing Bitmap
+				Matrix flipHorizontalMatrix = new Matrix();
+				flipHorizontalMatrix.setScale(-1,1);
+				flipHorizontalMatrix.postTranslate(w2,0);
+				c2.drawBitmap(bitmapB, flipHorizontalMatrix, null);
+				//Recycle the now unused bitmap
+				bitmapB.recycle();
+				bitmapB = null;
+				
+			} else {
+				mBitmapB = mBitmap;
+			}
+			//CAGS: Store w2 for later flip
+			mWidthAux = w;
+			mNewTex = true;
 			// Calculate final texture coordinates.
 			float texX = (float) w / newW;
 			float texY = (float) h / newH;
@@ -714,6 +810,30 @@ public class CurlMesh {
 				setTexCoords(0f, 0f, texX, texY);
 			}
 		}
+	}
+	
+	/**
+	 * Swap Front and Back Sheets/Textures.  
+	 */
+	/*CAGS: This method depends on keeping the mBitmaps objects, I supose
+	  it consume more memory due to keep those bitmaps in memory.*/
+	// TODO: Optimize the swap of textures without keeping the mBitmaps 
+	// in memory, see draw() method for a reference on how I was trying to do it
+	public void swapSheet (){
+		Bitmap aux;
+		aux = mBitmap;
+		mBitmap= Bitmap.createBitmap(mBitmapB);
+		Canvas c = new Canvas(mBitmap);
+		//Flip Matrix
+		Matrix flipHorizontalMatrix = new Matrix();
+		flipHorizontalMatrix.setScale(-1,1);
+		flipHorizontalMatrix.postTranslate(mWidthAux,0);
+		c.drawBitmap(mBitmap, flipHorizontalMatrix, null);
+		
+		mBitmapB= Bitmap.createBitmap(aux);
+		Canvas c2 = new Canvas(mBitmapB);
+		c2.drawBitmap(mBitmapB, flipHorizontalMatrix, null);
+		mNewTex = true;
 	}
 
 	/**
