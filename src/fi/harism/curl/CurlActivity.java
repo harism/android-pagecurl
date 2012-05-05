@@ -50,7 +50,10 @@ public class CurlActivity extends Activity {
 
 		// This is something somewhat experimental. Before uncommenting next
 		// line, please see method comments in CurlView.
-		// mCurlView.setEnableTouchPressure(true);
+		mCurlView.setEnableTouchPressure(true);
+		
+		// CAGS: This is to allow 2 pages landscape mode, set to false for legacy mode
+		mCurlView.set2PagesLandscape(true);
 	}
 
 	@Override
