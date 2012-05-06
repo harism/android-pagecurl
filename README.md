@@ -1,3 +1,13 @@
+NOTE
+====
+
+As of this commit all "pages" will be 2-sided. Meaning indices { 0, 2, 4, 6, ...}
+are front-facing and { 1, 3, 5, 7, ...} back-facing ones. This happens when page is on right side.
+On left side page is "flipped over" similarly as a page does on a regular book.
+
+Here's an example video from cags12 showing 2-sided page support in landscape mode;
+[http://www.youtube.com/watch?v=iwu7P5PCpsw]
+
 Introduction
 ============
 Project for implementing 'page curl' effect on Android + OpenGL ES 1.0 (possibly 1.1/2.0 too if there's clear advantage in using them).
@@ -121,5 +131,3 @@ Not to forget many of the true real-time rendering heros. One day We're about to
 * Rgba&Tbc - Elevated [http://www.youtube.com/watch?v=_YWMGuh15nE]
 * Andromeda&Orb - Stargazer [http://www.youtube.com/watch?v=5u1cqYLNbJI]
 * Cncd&Flt - Numb Res [http://www.youtube.com/watch?v=LTOC_ajkRkU]
-
-// cags12 Edit: Added 2 pages landscape support - [http://www.youtube.com/watch?v=iwu7P5PCpsw]

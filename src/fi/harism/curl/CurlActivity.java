@@ -1,5 +1,5 @@
 /*
-   Copyright 2011 Harri Smått
+   Copyright 2012 Harri Smatt
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
-*/
+ */
 
 package fi.harism.curl;
 
@@ -50,10 +50,7 @@ public class CurlActivity extends Activity {
 
 		// This is something somewhat experimental. Before uncommenting next
 		// line, please see method comments in CurlView.
-		mCurlView.setEnableTouchPressure(true);
-		
-		// CAGS: This is to allow 2 pages landscape mode, set to false for legacy mode
-		mCurlView.set2PagesLandscape(true);
+		// mCurlView.setEnableTouchPressure(true);
 	}
 
 	@Override
@@ -83,6 +80,21 @@ public class CurlActivity extends Activity {
 
 		@Override
 		public Bitmap getBitmap(int width, int height, int index) {
+
+			// For every "odd" bitmap (back-facing ones); 1, 3, 5, 7... Return a
+			// static few pixel default bitmap only.
+			if ((index & 0x01) == 0x01) {
+				final int colors[] = { 0xFF808080, 0xFFA0A0A0, 0xFFA0A0A0,
+						0xFF808080 };
+				Bitmap bitmap = Bitmap.createBitmap(colors, 2, 2,
+						Bitmap.Config.ARGB_8888);
+				return bitmap;
+			}
+
+			// For front facing bitmaps (even ones) change index --> index / 2
+			// --> 0, 1, 2, 3...
+			index >>= 1;
+
 			Bitmap b = Bitmap.createBitmap(width, height,
 					Bitmap.Config.ARGB_8888);
 			b.eraseColor(0xFFFFFFFF);
@@ -122,7 +134,9 @@ public class CurlActivity extends Activity {
 
 		@Override
 		public int getBitmapCount() {
-			return mBitmapIds.length;
+			// Number of bitmaps * 2 for we have mBitmapIds.length bitmaps +
+			// same amount of static "back-facing" bitmaps.
+			return mBitmapIds.length * 2;
 		}
 	}
 

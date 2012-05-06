@@ -1,5 +1,5 @@
 /*
-   Copyright 2011 Harri Smått
+   Copyright 2012 Harri Smatt
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
-*/
+ */
 
 package fi.harism.curl;
 
@@ -24,7 +24,6 @@ import javax.microedition.khronos.opengles.GL10;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Matrix;
 import android.graphics.PointF;
 import android.graphics.RectF;
 import android.opengl.GLUtils;
@@ -45,47 +44,43 @@ public class CurlMesh {
 	// due to reason unknown to me. Leaving it here anyway as seeing polygon
 	// outlines gives good insight how original rectangle is divided.
 	private static final boolean DRAW_POLYGON_OUTLINES = false;
+	// Flag for enabling shadow rendering.
+	private static final boolean DRAW_SHADOW = true;
 	// Flag for texture rendering. While this is likely something you
 	// don't want to do it's been used for development purposes as texture
 	// rendering is rather slow on emulator.
 	private static final boolean DRAW_TEXTURE = true;
-	// Flag for enabling shadow rendering.
-	private static final boolean DRAW_SHADOW = true;
 
 	// Colors for shadow. Inner one is the color drawn next to surface where
 	// shadowed area starts and outer one is color shadow ends to.
 	private static final float[] SHADOW_INNER_COLOR = { 0f, 0f, 0f, .5f };
 	private static final float[] SHADOW_OUTER_COLOR = { 0f, 0f, 0f, .0f };
 
-	// Alpha values for front and back facing texture.
-	// CAGS: Modified to avoid transparency in landscape
-	private static double BACKFACE_ALPHA = 1f;
-	//private static final double BACKFACE_ALPHA = .2f;
-	private static final double FRONTFACE_ALPHA = 1f;
-	// Boolean for 'flipping' texture sideways.
-	private boolean mFlipTexture = false;
-	
-	// CAGS: Method to change Alpha value landscape/portraid
-	public static void setALPHA (double value){
-		BACKFACE_ALPHA = value;
-	}
-
-	// For testing purposes.
-	private int mCurlPositionLinesCount;
-	private FloatBuffer mCurlPositionLines;
+	// Let's avoid using 'new' as much as possible. Meaning we introduce arrays
+	// once here and reuse them on runtime. Doesn't really have very much effect
+	// but avoids some garbage collections from happening.
+	private Array<ShadowVertex> mArrDropShadowVertices;
+	private Array<Vertex> mArrIntersections;
+	private Array<Vertex> mArrOutputVertices;
+	private Array<Vertex> mArrRotatedVertices;
+	private Array<Double> mArrScanLines;
+	private Array<ShadowVertex> mArrSelfShadowVertices;
+	private Array<ShadowVertex> mArrTempShadowVertices;
+	private Array<Vertex> mArrTempVertices;
 
 	// Buffers for feeding rasterizer.
-	private FloatBuffer mVertices;
-	private FloatBuffer mTexCoords;
-	private FloatBuffer mColors;
-	private int mVerticesCountFront;
-	private int mVerticesCountBack;
+	private FloatBuffer mBufColors;
+	private FloatBuffer mBufCurlPositionLines;
+	private FloatBuffer mBufShadowColors;
+	private FloatBuffer mBufShadowVertices;
+	private FloatBuffer mBufTexCoords;
+	private FloatBuffer mBufVertices;
 
-	private FloatBuffer mShadowColors;
-	private FloatBuffer mShadowVertices;
+	private int mCurlPositionLinesCount;
 	private int mDropShadowCount;
-	private int mSelfShadowCount;
 
+	// Boolean for 'flipping' texture sideways.
+	private boolean mFlipTexture = false;
 	// Maximum number of split lines used for creating a curl.
 	private int mMaxCurlSplits;
 
@@ -93,29 +88,17 @@ public class CurlMesh {
 	// mRectangle[1] = bottom-left, mRectangle[2] = top-right and mRectangle[3]
 	// bottom-right.
 	private Vertex[] mRectangle = new Vertex[4];
+	private int mSelfShadowCount;
 
-	// One and only texture id.
+	private Bitmap mTextureBack;
+	private Bitmap mTextureFront;
+	// Texture ids and other variables.
 	private int[] mTextureIds;
-	private Bitmap mBitmap;
-	private RectF mTextureRect = new RectF();
-	
-	// CAGS : Added some new needed variables
-	private Bitmap mBitmapB;
-	private int mWidthAux;
-	private boolean mNewTex = false;
-	//public boolean mSwapSheet = false;
+	private RectF mTextureRectBack = new RectF();
+	private RectF mTextureRectFront = new RectF();
 
-	// Let's avoid using 'new' as much as possible. Meaning we introduce arrays
-	// once here and reuse them on runtime. Doesn't really have very much effect
-	// but avoids some garbage collections from happening.
-	private Array<Vertex> mTempVertices;
-	private Array<Vertex> mIntersections;
-	private Array<Vertex> mOutputVertices;
-	private Array<Vertex> mRotatedVertices;
-	private Array<Double> mScanLines;
-	private Array<ShadowVertex> mTempShadowVertices;
-	private Array<ShadowVertex> mSelfShadowVertices;
-	private Array<ShadowVertex> mDropShadowVertices;
+	private int mVerticesCountBack;
+	private int mVerticesCountFront;
 
 	/**
 	 * Constructor for mesh object.
@@ -129,24 +112,24 @@ public class CurlMesh {
 		// There really is no use for 0 splits.
 		mMaxCurlSplits = maxCurlSplits < 1 ? 1 : maxCurlSplits;
 
-		mScanLines = new Array<Double>(maxCurlSplits + 2);
-		mOutputVertices = new Array<Vertex>(7);
-		mRotatedVertices = new Array<Vertex>(4);
-		mIntersections = new Array<Vertex>(2);
-		mTempVertices = new Array<Vertex>(7 + 4);
+		mArrScanLines = new Array<Double>(maxCurlSplits + 2);
+		mArrOutputVertices = new Array<Vertex>(7);
+		mArrRotatedVertices = new Array<Vertex>(4);
+		mArrIntersections = new Array<Vertex>(2);
+		mArrTempVertices = new Array<Vertex>(7 + 4);
 		for (int i = 0; i < 7 + 4; ++i) {
-			mTempVertices.add(new Vertex());
+			mArrTempVertices.add(new Vertex());
 		}
 
 		if (DRAW_SHADOW) {
-			mSelfShadowVertices = new Array<ShadowVertex>(
+			mArrSelfShadowVertices = new Array<ShadowVertex>(
 					(mMaxCurlSplits + 2) * 2);
-			mDropShadowVertices = new Array<ShadowVertex>(
+			mArrDropShadowVertices = new Array<ShadowVertex>(
 					(mMaxCurlSplits + 2) * 2);
-			mTempShadowVertices = new Array<ShadowVertex>(
+			mArrTempShadowVertices = new Array<ShadowVertex>(
 					(mMaxCurlSplits + 2) * 2);
 			for (int i = 0; i < (mMaxCurlSplits + 2) * 2; ++i) {
-				mTempShadowVertices.add(new ShadowVertex());
+				mArrTempShadowVertices.add(new ShadowVertex());
 			}
 		}
 
@@ -165,8 +148,8 @@ public class CurlMesh {
 			ByteBuffer hvbb = ByteBuffer
 					.allocateDirect(mCurlPositionLinesCount * 2 * 2 * 4);
 			hvbb.order(ByteOrder.nativeOrder());
-			mCurlPositionLines = hvbb.asFloatBuffer();
-			mCurlPositionLines.position(0);
+			mBufCurlPositionLines = hvbb.asFloatBuffer();
+			mBufCurlPositionLines.position(0);
 		}
 
 		// There are 4 vertices from bounding rect, max 2 from adding split line
@@ -175,37 +158,55 @@ public class CurlMesh {
 		int maxVerticesCount = 4 + 2 + (2 * mMaxCurlSplits);
 		ByteBuffer vbb = ByteBuffer.allocateDirect(maxVerticesCount * 3 * 4);
 		vbb.order(ByteOrder.nativeOrder());
-		mVertices = vbb.asFloatBuffer();
-		mVertices.position(0);
+		mBufVertices = vbb.asFloatBuffer();
+		mBufVertices.position(0);
 
 		if (DRAW_TEXTURE) {
 			ByteBuffer tbb = ByteBuffer
 					.allocateDirect(maxVerticesCount * 2 * 4);
 			tbb.order(ByteOrder.nativeOrder());
-			mTexCoords = tbb.asFloatBuffer();
-			mTexCoords.position(0);
+			mBufTexCoords = tbb.asFloatBuffer();
+			mBufTexCoords.position(0);
 		}
 
 		ByteBuffer cbb = ByteBuffer.allocateDirect(maxVerticesCount * 4 * 4);
 		cbb.order(ByteOrder.nativeOrder());
-		mColors = cbb.asFloatBuffer();
-		mColors.position(0);
+		mBufColors = cbb.asFloatBuffer();
+		mBufColors.position(0);
 
 		if (DRAW_SHADOW) {
 			int maxShadowVerticesCount = (mMaxCurlSplits + 2) * 2 * 2;
 			ByteBuffer scbb = ByteBuffer
 					.allocateDirect(maxShadowVerticesCount * 4 * 4);
 			scbb.order(ByteOrder.nativeOrder());
-			mShadowColors = scbb.asFloatBuffer();
-			mShadowColors.position(0);
+			mBufShadowColors = scbb.asFloatBuffer();
+			mBufShadowColors.position(0);
 
 			ByteBuffer sibb = ByteBuffer
 					.allocateDirect(maxShadowVerticesCount * 3 * 4);
 			sibb.order(ByteOrder.nativeOrder());
-			mShadowVertices = sibb.asFloatBuffer();
-			mShadowVertices.position(0);
+			mBufShadowVertices = sibb.asFloatBuffer();
+			mBufShadowVertices.position(0);
 
 			mDropShadowCount = mSelfShadowCount = 0;
+		}
+	}
+
+	/**
+	 * Adds vertex to buffers.
+	 */
+	private void addVertex(Vertex vertex) {
+		mBufVertices.put((float) vertex.mPosX);
+		mBufVertices.put((float) vertex.mPosY);
+		mBufVertices.put((float) vertex.mPosZ);
+		mBufColors.put((float) vertex.mColor);
+		mBufColors.put((float) vertex.mColor);
+		mBufColors.put((float) vertex.mColor);
+		// Constant alpha.
+		mBufColors.put(1.0f);
+		if (DRAW_TEXTURE) {
+			mBufTexCoords.put((float) vertex.mTexX);
+			mBufTexCoords.put((float) vertex.mTexY);
 		}
 	}
 
@@ -224,30 +225,30 @@ public class CurlMesh {
 
 		// First add some 'helper' lines used for development.
 		if (DRAW_CURL_POSITION) {
-			mCurlPositionLines.position(0);
+			mBufCurlPositionLines.position(0);
 
-			mCurlPositionLines.put(curlPos.x);
-			mCurlPositionLines.put(curlPos.y - 1.0f);
-			mCurlPositionLines.put(curlPos.x);
-			mCurlPositionLines.put(curlPos.y + 1.0f);
-			mCurlPositionLines.put(curlPos.x - 1.0f);
-			mCurlPositionLines.put(curlPos.y);
-			mCurlPositionLines.put(curlPos.x + 1.0f);
-			mCurlPositionLines.put(curlPos.y);
+			mBufCurlPositionLines.put(curlPos.x);
+			mBufCurlPositionLines.put(curlPos.y - 1.0f);
+			mBufCurlPositionLines.put(curlPos.x);
+			mBufCurlPositionLines.put(curlPos.y + 1.0f);
+			mBufCurlPositionLines.put(curlPos.x - 1.0f);
+			mBufCurlPositionLines.put(curlPos.y);
+			mBufCurlPositionLines.put(curlPos.x + 1.0f);
+			mBufCurlPositionLines.put(curlPos.y);
 
-			mCurlPositionLines.put(curlPos.x);
-			mCurlPositionLines.put(curlPos.y);
-			mCurlPositionLines.put(curlPos.x + curlDir.x * 2);
-			mCurlPositionLines.put(curlPos.y + curlDir.y * 2);
+			mBufCurlPositionLines.put(curlPos.x);
+			mBufCurlPositionLines.put(curlPos.y);
+			mBufCurlPositionLines.put(curlPos.x + curlDir.x * 2);
+			mBufCurlPositionLines.put(curlPos.y + curlDir.y * 2);
 
-			mCurlPositionLines.position(0);
+			mBufCurlPositionLines.position(0);
 		}
 
 		// Actual 'curl' implementation starts here.
-		mVertices.position(0);
-		mColors.position(0);
+		mBufVertices.position(0);
+		mBufColors.position(0);
 		if (DRAW_TEXTURE) {
-			mTexCoords.position(0);
+			mBufTexCoords.position(0);
 		}
 
 		// Calculate curl angle from direction.
@@ -259,16 +260,16 @@ public class CurlMesh {
 		// ordered in ascending order based on x -coordinate at the same time.
 		// And using y -coordinate in very rare case in which two vertices have
 		// same x -coordinate.
-		mTempVertices.addAll(mRotatedVertices);
-		mRotatedVertices.clear();
+		mArrTempVertices.addAll(mArrRotatedVertices);
+		mArrRotatedVertices.clear();
 		for (int i = 0; i < 4; ++i) {
-			Vertex v = mTempVertices.remove(0);
+			Vertex v = mArrTempVertices.remove(0);
 			v.set(mRectangle[i]);
 			v.translate(-curlPos.x, -curlPos.y);
 			v.rotateZ(-curlAngle);
 			int j = 0;
-			for (; j < mRotatedVertices.size(); ++j) {
-				Vertex v2 = mRotatedVertices.get(j);
+			for (; j < mArrRotatedVertices.size(); ++j) {
+				Vertex v2 = mArrRotatedVertices.get(j);
 				if (v.mPosX > v2.mPosX) {
 					break;
 				}
@@ -276,7 +277,7 @@ public class CurlMesh {
 					break;
 				}
 			}
-			mRotatedVertices.add(j, v);
+			mArrRotatedVertices.add(j, v);
 		}
 
 		// Rotated rectangle lines/vertex indices. We need to find bounding
@@ -292,9 +293,9 @@ public class CurlMesh {
 		{
 			// TODO: There really has to be more 'easier' way of doing this -
 			// not including extensive use of sqrt.
-			Vertex v0 = mRotatedVertices.get(0);
-			Vertex v2 = mRotatedVertices.get(2);
-			Vertex v3 = mRotatedVertices.get(3);
+			Vertex v0 = mArrRotatedVertices.get(0);
+			Vertex v2 = mArrRotatedVertices.get(2);
+			Vertex v3 = mArrRotatedVertices.get(3);
 			double dist2 = Math.sqrt((v0.mPosX - v2.mPosX)
 					* (v0.mPosX - v2.mPosX) + (v0.mPosY - v2.mPosY)
 					* (v0.mPosY - v2.mPosY));
@@ -310,39 +311,39 @@ public class CurlMesh {
 		mVerticesCountFront = mVerticesCountBack = 0;
 
 		if (DRAW_SHADOW) {
-			mTempShadowVertices.addAll(mDropShadowVertices);
-			mTempShadowVertices.addAll(mSelfShadowVertices);
-			mDropShadowVertices.clear();
-			mSelfShadowVertices.clear();
+			mArrTempShadowVertices.addAll(mArrDropShadowVertices);
+			mArrTempShadowVertices.addAll(mArrSelfShadowVertices);
+			mArrDropShadowVertices.clear();
+			mArrSelfShadowVertices.clear();
 		}
 
 		// Length of 'curl' curve.
 		double curlLength = Math.PI * radius;
 		// Calculate scan lines.
 		// TODO: Revisit this code one day. There is room for optimization here.
-		mScanLines.clear();
+		mArrScanLines.clear();
 		if (mMaxCurlSplits > 0) {
-			mScanLines.add((double) 0);
+			mArrScanLines.add((double) 0);
 		}
 		for (int i = 1; i < mMaxCurlSplits; ++i) {
-			mScanLines.add((-curlLength * i) / (mMaxCurlSplits - 1));
+			mArrScanLines.add((-curlLength * i) / (mMaxCurlSplits - 1));
 		}
 		// As mRotatedVertices is ordered regarding x -coordinate, adding
 		// this scan line produces scan area picking up vertices which are
 		// rotated completely. One could say 'until infinity'.
-		mScanLines.add(mRotatedVertices.get(3).mPosX - 1);
+		mArrScanLines.add(mArrRotatedVertices.get(3).mPosX - 1);
 
 		// Start from right most vertex. Pretty much the same as first scan area
 		// is starting from 'infinity'.
-		double scanXmax = mRotatedVertices.get(0).mPosX + 1;
+		double scanXmax = mArrRotatedVertices.get(0).mPosX + 1;
 
-		for (int i = 0; i < mScanLines.size(); ++i) {
+		for (int i = 0; i < mArrScanLines.size(); ++i) {
 			// Once we have scanXmin and scanXmax we have a scan area to start
 			// working with.
-			double scanXmin = mScanLines.get(i);
+			double scanXmin = mArrScanLines.get(i);
 			// First iterate 'original' rectangle vertices within scan area.
-			for (int j = 0; j < mRotatedVertices.size(); ++j) {
-				Vertex v = mRotatedVertices.get(j);
+			for (int j = 0; j < mArrRotatedVertices.size(); ++j) {
+				Vertex v = mArrRotatedVertices.get(j);
 				// Test if vertex lies within this scan area.
 				// TODO: Frankly speaking, can't remember why equality check was
 				// added to both ends. Guessing it was somehow related to case
@@ -350,13 +351,13 @@ public class CurlMesh {
 				// be handled much more effectively anyway.
 				if (v.mPosX >= scanXmin && v.mPosX <= scanXmax) {
 					// Pop out a vertex from temp vertices.
-					Vertex n = mTempVertices.remove(0);
+					Vertex n = mArrTempVertices.remove(0);
 					n.set(v);
 					// This is done solely for triangulation reasons. Given a
 					// rotated rectangle it has max 2 vertices having
 					// intersection.
 					Array<Vertex> intersections = getIntersections(
-							mRotatedVertices, lines, n.mPosX);
+							mArrRotatedVertices, lines, n.mPosX);
 					// In a sense one could say we're adding vertices always in
 					// two, positioned at the ends of intersecting line. And for
 					// triangulation to work properly they are added based on y
@@ -364,24 +365,24 @@ public class CurlMesh {
 					if (intersections.size() == 1
 							&& intersections.get(0).mPosY > v.mPosY) {
 						// In case intersecting vertex is higher add it first.
-						mOutputVertices.addAll(intersections);
-						mOutputVertices.add(n);
+						mArrOutputVertices.addAll(intersections);
+						mArrOutputVertices.add(n);
 					} else if (intersections.size() <= 1) {
 						// Otherwise add original vertex first.
-						mOutputVertices.add(n);
-						mOutputVertices.addAll(intersections);
+						mArrOutputVertices.add(n);
+						mArrOutputVertices.addAll(intersections);
 					} else {
 						// There should never be more than 1 intersecting
 						// vertex. But if it happens as a fallback simply skip
 						// everything.
-						mTempVertices.add(n);
-						mTempVertices.addAll(intersections);
+						mArrTempVertices.add(n);
+						mArrTempVertices.addAll(intersections);
 					}
 				}
 			}
 
 			// Search for scan line intersections.
-			Array<Vertex> intersections = getIntersections(mRotatedVertices,
+			Array<Vertex> intersections = getIntersections(mArrRotatedVertices,
 					lines, scanXmin);
 
 			// We expect to get 0 or 2 vertices. In rare cases there's only one
@@ -393,10 +394,10 @@ public class CurlMesh {
 				Vertex v1 = intersections.get(0);
 				Vertex v2 = intersections.get(1);
 				if (v1.mPosY < v2.mPosY) {
-					mOutputVertices.add(v2);
-					mOutputVertices.add(v1);
+					mArrOutputVertices.add(v2);
+					mArrOutputVertices.add(v1);
 				} else {
-					mOutputVertices.addAll(intersections);
+					mArrOutputVertices.addAll(intersections);
 				}
 			} else if (intersections.size() != 0) {
 				// This happens in a case in which there is a original vertex
@@ -406,26 +407,29 @@ public class CurlMesh {
 				// was handled already earlier once iterating through
 				// mRotatedVertices, in latter case it's better to avoid doing
 				// anything with them.
-				mTempVertices.addAll(intersections);
+				mArrTempVertices.addAll(intersections);
 			}
 
 			// Add vertices found during this iteration to vertex etc buffers.
-			while (mOutputVertices.size() > 0) {
-				Vertex v = mOutputVertices.remove(0);
-				mTempVertices.add(v);
+			while (mArrOutputVertices.size() > 0) {
+				Vertex v = mArrOutputVertices.remove(0);
+				mArrTempVertices.add(v);
+
+				// Local texture front-facing flag.
+				boolean textureFront;
 
 				// Untouched vertices.
 				if (i == 0) {
-					v.mAlpha = mFlipTexture ? BACKFACE_ALPHA : FRONTFACE_ALPHA;
+					textureFront = true;
 					mVerticesCountFront++;
 				}
 				// 'Completely' rotated vertices.
-				else if (i == mScanLines.size() - 1 || curlLength == 0) {
+				else if (i == mArrScanLines.size() - 1 || curlLength == 0) {
 					v.mPosX = -(curlLength + v.mPosX);
 					v.mPosZ = 2 * radius;
 					v.mPenumbraX = -v.mPenumbraX;
 
-					v.mAlpha = mFlipTexture ? FRONTFACE_ALPHA : BACKFACE_ALPHA;
+					textureFront = false;
 					mVerticesCountBack++;
 				}
 				// Vertex lies within 'curl'.
@@ -441,14 +445,25 @@ public class CurlMesh {
 					v.mColor = .1f + .9f * Math.sqrt(Math.sin(rotY) + 1);
 
 					if (v.mPosZ >= radius) {
-						v.mAlpha = mFlipTexture ? FRONTFACE_ALPHA
-								: BACKFACE_ALPHA;
+						textureFront = false;
 						mVerticesCountBack++;
 					} else {
-						v.mAlpha = mFlipTexture ? BACKFACE_ALPHA
-								: FRONTFACE_ALPHA;
+						textureFront = true;
 						mVerticesCountFront++;
 					}
+				}
+
+				// We use local textureFront for flipping backside texture
+				// locally. Plus additionally if mesh is in flip texture mode,
+				// we'll make the procedure "backwards". Also, until this point,
+				// texture coordinates are within [0, 1] range so we'll adjust
+				// them to final texture coordinates too.
+				if (textureFront != mFlipTexture) {
+					v.mTexX *= mTextureRectFront.right;
+					v.mTexY *= mTextureRectFront.bottom;
+				} else {
+					v.mTexX = (1f - v.mTexX) * mTextureRectBack.right;
+					v.mTexY *= mTextureRectBack.bottom;
 				}
 
 				// Move vertex back to 'world' coordinates.
@@ -458,27 +473,27 @@ public class CurlMesh {
 
 				// Drop shadow is cast 'behind' the curl.
 				if (DRAW_SHADOW && v.mPosZ > 0 && v.mPosZ <= radius) {
-					ShadowVertex sv = mTempShadowVertices.remove(0);
+					ShadowVertex sv = mArrTempShadowVertices.remove(0);
 					sv.mPosX = v.mPosX;
 					sv.mPosY = v.mPosY;
 					sv.mPosZ = v.mPosZ;
 					sv.mPenumbraX = (v.mPosZ / 2) * -curlDir.x;
 					sv.mPenumbraY = (v.mPosZ / 2) * -curlDir.y;
 					sv.mPenumbraColor = v.mPosZ / radius;
-					int idx = (mDropShadowVertices.size() + 1) / 2;
-					mDropShadowVertices.add(idx, sv);
+					int idx = (mArrDropShadowVertices.size() + 1) / 2;
+					mArrDropShadowVertices.add(idx, sv);
 				}
 				// Self shadow is cast partly over mesh.
 				if (DRAW_SHADOW && v.mPosZ > radius) {
-					ShadowVertex sv = mTempShadowVertices.remove(0);
+					ShadowVertex sv = mArrTempShadowVertices.remove(0);
 					sv.mPosX = v.mPosX;
 					sv.mPosY = v.mPosY;
 					sv.mPosZ = v.mPosZ;
 					sv.mPenumbraX = ((v.mPosZ - radius) / 3) * v.mPenumbraX;
 					sv.mPenumbraY = ((v.mPosZ - radius) / 3) * v.mPenumbraY;
 					sv.mPenumbraColor = (v.mPosZ - radius) / (2 * radius);
-					int idx = (mSelfShadowVertices.size() + 1) / 2;
-					mSelfShadowVertices.add(idx, sv);
+					int idx = (mArrSelfShadowVertices.size() + 1) / 2;
+					mArrSelfShadowVertices.add(idx, sv);
 				}
 			}
 
@@ -486,55 +501,55 @@ public class CurlMesh {
 			scanXmax = scanXmin;
 		}
 
-		mVertices.position(0);
-		mColors.position(0);
+		mBufVertices.position(0);
+		mBufColors.position(0);
 		if (DRAW_TEXTURE) {
-			mTexCoords.position(0);
+			mBufTexCoords.position(0);
 		}
 
 		// Add shadow Vertices.
 		if (DRAW_SHADOW) {
-			mShadowColors.position(0);
-			mShadowVertices.position(0);
+			mBufShadowColors.position(0);
+			mBufShadowVertices.position(0);
 			mDropShadowCount = 0;
 
-			for (int i = 0; i < mDropShadowVertices.size(); ++i) {
-				ShadowVertex sv = mDropShadowVertices.get(i);
-				mShadowVertices.put((float) sv.mPosX);
-				mShadowVertices.put((float) sv.mPosY);
-				mShadowVertices.put((float) sv.mPosZ);
-				mShadowVertices.put((float) (sv.mPosX + sv.mPenumbraX));
-				mShadowVertices.put((float) (sv.mPosY + sv.mPenumbraY));
-				mShadowVertices.put((float) sv.mPosZ);
+			for (int i = 0; i < mArrDropShadowVertices.size(); ++i) {
+				ShadowVertex sv = mArrDropShadowVertices.get(i);
+				mBufShadowVertices.put((float) sv.mPosX);
+				mBufShadowVertices.put((float) sv.mPosY);
+				mBufShadowVertices.put((float) sv.mPosZ);
+				mBufShadowVertices.put((float) (sv.mPosX + sv.mPenumbraX));
+				mBufShadowVertices.put((float) (sv.mPosY + sv.mPenumbraY));
+				mBufShadowVertices.put((float) sv.mPosZ);
 				for (int j = 0; j < 4; ++j) {
 					double color = SHADOW_OUTER_COLOR[j]
 							+ (SHADOW_INNER_COLOR[j] - SHADOW_OUTER_COLOR[j])
 							* sv.mPenumbraColor;
-					mShadowColors.put((float) color);
+					mBufShadowColors.put((float) color);
 				}
-				mShadowColors.put(SHADOW_OUTER_COLOR);
+				mBufShadowColors.put(SHADOW_OUTER_COLOR);
 				mDropShadowCount += 2;
 			}
 			mSelfShadowCount = 0;
-			for (int i = 0; i < mSelfShadowVertices.size(); ++i) {
-				ShadowVertex sv = mSelfShadowVertices.get(i);
-				mShadowVertices.put((float) sv.mPosX);
-				mShadowVertices.put((float) sv.mPosY);
-				mShadowVertices.put((float) sv.mPosZ);
-				mShadowVertices.put((float) (sv.mPosX + sv.mPenumbraX));
-				mShadowVertices.put((float) (sv.mPosY + sv.mPenumbraY));
-				mShadowVertices.put((float) sv.mPosZ);
+			for (int i = 0; i < mArrSelfShadowVertices.size(); ++i) {
+				ShadowVertex sv = mArrSelfShadowVertices.get(i);
+				mBufShadowVertices.put((float) sv.mPosX);
+				mBufShadowVertices.put((float) sv.mPosY);
+				mBufShadowVertices.put((float) sv.mPosZ);
+				mBufShadowVertices.put((float) (sv.mPosX + sv.mPenumbraX));
+				mBufShadowVertices.put((float) (sv.mPosY + sv.mPenumbraY));
+				mBufShadowVertices.put((float) sv.mPosZ);
 				for (int j = 0; j < 4; ++j) {
 					double color = SHADOW_OUTER_COLOR[j]
 							+ (SHADOW_INNER_COLOR[j] - SHADOW_OUTER_COLOR[j])
 							* sv.mPenumbraColor;
-					mShadowColors.put((float) color);
+					mBufShadowColors.put((float) color);
 				}
-				mShadowColors.put(SHADOW_OUTER_COLOR);
+				mBufShadowColors.put(SHADOW_OUTER_COLOR);
 				mSelfShadowCount += 2;
 			}
-			mShadowColors.position(0);
-			mShadowVertices.position(0);
+			mBufShadowColors.position(0);
+			mBufShadowVertices.position(0);
 		}
 	}
 
@@ -547,123 +562,93 @@ public class CurlMesh {
 			// Generate texture.
 			mTextureIds = new int[2];
 			gl.glGenTextures(2, mTextureIds, 0);
-			// Set texture attributes.
-			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
-			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MIN_FILTER,
-					GL10.GL_LINEAR);
-			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MAG_FILTER,
-					GL10.GL_LINEAR);
-			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_S,
-					GL10.GL_CLAMP_TO_EDGE);
-			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_T,
-					GL10.GL_CLAMP_TO_EDGE);
-			//CAGS: Back Texture 
-			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[1]);
-			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MIN_FILTER,
-					GL10.GL_LINEAR);
-			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MAG_FILTER,
-					GL10.GL_LINEAR);
-			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_S,
-					GL10.GL_CLAMP_TO_EDGE);
-			gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_T,
-					GL10.GL_CLAMP_TO_EDGE);	
-		}
-		// If mBitmap != null we have a new texture.
-		if (DRAW_TEXTURE && mNewTex) {	
-			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
-			GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, mBitmap, 0);
-			//mBitmap.recycle();
-			//mBitmap = null;
-			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[1]);
-			GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, mBitmapB, 0);
-			//mBitmapB.recycle();
-			//mBitmapB = null;
-			mNewTex = false;
-	}	
-
-		if (DRAW_TEXTURE) {
-			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
-		}
-		
-		/* CAGS: Invert the textures if mSwapSheet == true -> Not acomplished due 
-		 * to not  figured out where to put again swapSheet = false and avoid a bad behaivor
-		 * of the curled page
-		if (DRAW_TEXTURE) {
-			if (!mSwapSheet){	
-				gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
-			}else{
-				gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[1]);
+			for (int texId : mTextureIds) {
+				// Set texture attributes.
+				gl.glBindTexture(GL10.GL_TEXTURE_2D, texId);
+				gl.glTexParameterf(GL10.GL_TEXTURE_2D,
+						GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_LINEAR);
+				gl.glTexParameterf(GL10.GL_TEXTURE_2D,
+						GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_LINEAR);
+				gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_S,
+						GL10.GL_CLAMP_TO_EDGE);
+				gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_T,
+						GL10.GL_CLAMP_TO_EDGE);
 			}
-		}*/
-		
+		}
+
+		// If mTextureFront != null we have a new texture.
+		if (DRAW_TEXTURE && mTextureFront != null) {
+			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
+			GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, mTextureFront, 0);
+			mTextureFront.recycle();
+			mTextureFront = null;
+		}
+		// If mTextureBack != null we have a new texture.
+		if (DRAW_TEXTURE && mTextureBack != null) {
+			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[1]);
+			GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, mTextureBack, 0);
+			mTextureBack.recycle();
+			mTextureBack = null;
+		}
+
 		// Some 'global' settings.
 		gl.glEnableClientState(GL10.GL_VERTEX_ARRAY);
 
 		// TODO: Drop shadow drawing is done temporarily here to hide some
 		// problems with its calculation.
 		if (DRAW_SHADOW) {
+			gl.glDisable(GL10.GL_TEXTURE_2D);
 			gl.glEnable(GL10.GL_BLEND);
 			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
 			gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
-			gl.glColorPointer(4, GL10.GL_FLOAT, 0, mShadowColors);
-			gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mShadowVertices);
+			gl.glColorPointer(4, GL10.GL_FLOAT, 0, mBufShadowColors);
+			gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mBufShadowVertices);
 			gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, mDropShadowCount);
 			gl.glDisableClientState(GL10.GL_COLOR_ARRAY);
 			gl.glDisable(GL10.GL_BLEND);
 		}
 
-		// Enable texture coordinates.
-		if (DRAW_TEXTURE) {
-			gl.glEnableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
-			gl.glTexCoordPointer(2, GL10.GL_FLOAT, 0, mTexCoords);
-		}
-		gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mVertices);
+		gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mBufVertices);
 
 		// Enable color array.
 		gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
-		gl.glColorPointer(4, GL10.GL_FLOAT, 0, mColors);
+		gl.glColorPointer(4, GL10.GL_FLOAT, 0, mBufColors);
 
-		// Draw blank / 'white' front facing vertices.
-		gl.glDisable(GL10.GL_TEXTURE_2D);
-		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, mVerticesCountFront);
-		// Draw front facing texture.
-		// TODO: Decide whether it's really needed to have alpha blending for
-		// front facing texture. If not, GL_BLEND isn't needed, possibly
-		// increasing performance. The heck, is it needed at all?
 		if (DRAW_TEXTURE) {
-			gl.glEnable(GL10.GL_BLEND);
+			gl.glEnableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
+			gl.glTexCoordPointer(2, GL10.GL_FLOAT, 0, mBufTexCoords);
+		}
+
+		// Draw front facing texture.
+		if (DRAW_TEXTURE) {
+			gl.glDisable(GL10.GL_BLEND);
 			gl.glEnable(GL10.GL_TEXTURE_2D);
-			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
+
+			if (mFlipTexture) {
+				gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[1]);
+			} else {
+				gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
+			}
+
 			gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, mVerticesCountFront);
 			gl.glDisable(GL10.GL_TEXTURE_2D);
-			gl.glDisable(GL10.GL_BLEND);
 		}
-		if (DRAW_TEXTURE) {
-			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[1]);
-		}
-		/* CAGS: Invert the textures if mSwapSheet == true -> Not acomplished due 
-		 * to not  figured out where to put again swapSheet = false and avoid a bad behaivor
-		 * of the curled page
-		   if (!mSwapSheet){	
-				gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[1]);
-			}else{
-				gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
-				//mSwapSheet=false;
-			}
-		}*/
-		
+
 		int backStartIdx = Math.max(0, mVerticesCountFront - 2);
 		int backCount = mVerticesCountFront + mVerticesCountBack - backStartIdx;
-		// Draw blank / 'white' back facing vertices.
-		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, backStartIdx, backCount);
 		// Draw back facing texture.
 		if (DRAW_TEXTURE) {
-			gl.glEnable(GL10.GL_BLEND);
+			gl.glDisable(GL10.GL_BLEND);
 			gl.glEnable(GL10.GL_TEXTURE_2D);
-			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
+
+			if (mFlipTexture) {
+				gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
+			} else {
+				gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[1]);
+			}
+
 			gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, backStartIdx, backCount);
 			gl.glDisable(GL10.GL_TEXTURE_2D);
-			gl.glDisable(GL10.GL_BLEND);
 		}
 
 		// Disable textures and color array.
@@ -675,7 +660,7 @@ public class CurlMesh {
 			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
 			gl.glLineWidth(1.0f);
 			gl.glColor4f(0.5f, 0.5f, 1.0f, 1.0f);
-			gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mVertices);
+			gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mBufVertices);
 			gl.glDrawArrays(GL10.GL_LINE_STRIP, 0, mVerticesCountFront);
 			gl.glDisable(GL10.GL_BLEND);
 		}
@@ -685,7 +670,7 @@ public class CurlMesh {
 			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
 			gl.glLineWidth(1.0f);
 			gl.glColor4f(1.0f, 0.5f, 0.5f, 1.0f);
-			gl.glVertexPointer(2, GL10.GL_FLOAT, 0, mCurlPositionLines);
+			gl.glVertexPointer(2, GL10.GL_FLOAT, 0, mBufCurlPositionLines);
 			gl.glDrawArrays(GL10.GL_LINES, 0, mCurlPositionLinesCount * 2);
 			gl.glDisable(GL10.GL_BLEND);
 		}
@@ -694,8 +679,8 @@ public class CurlMesh {
 			gl.glEnable(GL10.GL_BLEND);
 			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
 			gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
-			gl.glColorPointer(4, GL10.GL_FLOAT, 0, mShadowColors);
-			gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mShadowVertices);
+			gl.glColorPointer(4, GL10.GL_FLOAT, 0, mBufShadowColors);
+			gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mBufShadowVertices);
 			gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, mDropShadowCount,
 					mSelfShadowCount);
 			gl.glDisableClientState(GL10.GL_COLOR_ARRAY);
@@ -706,24 +691,92 @@ public class CurlMesh {
 	}
 
 	/**
+	 * Calculates intersections for given scan line.
+	 */
+	private Array<Vertex> getIntersections(Array<Vertex> vertices,
+			int[][] lineIndices, double scanX) {
+		mArrIntersections.clear();
+		// Iterate through rectangle lines each re-presented as a pair of
+		// vertices.
+		for (int j = 0; j < lineIndices.length; j++) {
+			Vertex v1 = vertices.get(lineIndices[j][0]);
+			Vertex v2 = vertices.get(lineIndices[j][1]);
+			// Here we expect that v1.mPosX >= v2.mPosX and wont do intersection
+			// test the opposite way.
+			if (v1.mPosX > scanX && v2.mPosX < scanX) {
+				// There is an intersection, calculate coefficient telling 'how
+				// far' scanX is from v2.
+				double c = (scanX - v2.mPosX) / (v1.mPosX - v2.mPosX);
+				Vertex n = mArrTempVertices.remove(0);
+				n.set(v2);
+				n.mPosX = scanX;
+				n.mPosY += (v1.mPosY - v2.mPosY) * c;
+				if (DRAW_TEXTURE) {
+					n.mTexX += (v1.mTexX - v2.mTexX) * c;
+					n.mTexY += (v1.mTexY - v2.mTexY) * c;
+				}
+				if (DRAW_SHADOW) {
+					n.mPenumbraX += (v1.mPenumbraX - v2.mPenumbraX) * c;
+					n.mPenumbraY += (v1.mPenumbraY - v2.mPenumbraY) * c;
+				}
+				mArrIntersections.add(n);
+			}
+		}
+		return mArrIntersections;
+	}
+
+	/**
+	 * Calculates the next highest power of two for a given integer.
+	 */
+	private int getNextHighestPO2(int n) {
+		n -= 1;
+		n = n | (n >> 1);
+		n = n | (n >> 2);
+		n = n | (n >> 4);
+		n = n | (n >> 8);
+		n = n | (n >> 16);
+		n = n | (n >> 32);
+		return n + 1;
+	}
+
+	/*
+	 * private synchronized void adjustTextureCoords(Vertex v, boolean front) {
+	 * front = front ^ mFlipTexture; if (front) { v.mTexX *=
+	 * mTextureRectFront.right; v.mTexY *= mTextureRectFront.bottom; } else {
+	 * v.mTexX *= (1f - v.mTexX) * mTextureRectBack.right; v.mTexY *=
+	 * mTextureRectBack.bottom; } }
+	 */
+
+	/**
 	 * Resets mesh to 'initial' state. Meaning this mesh will draw a plain
 	 * textured rectangle after call to this method.
 	 */
 	public synchronized void reset() {
-		mVertices.position(0);
-		mColors.position(0);
+		mBufVertices.position(0);
+		mBufColors.position(0);
 		if (DRAW_TEXTURE) {
-			mTexCoords.position(0);
+			mBufTexCoords.position(0);
 		}
 		for (int i = 0; i < 4; ++i) {
-			addVertex(mRectangle[i]);
+			Vertex tmp = mArrTempVertices.get(0);
+			tmp.set(mRectangle[i]);
+
+			if (mFlipTexture) {
+				tmp.mTexX = (1f - tmp.mTexX) * mTextureRectBack.right;
+				tmp.mTexY *= mTextureRectBack.bottom;
+			} else {
+				tmp.mTexX *= mTextureRectFront.right;
+				tmp.mTexY *= mTextureRectFront.bottom;
+			}
+
+			addVertex(tmp);
 		}
 		mVerticesCountFront = 4;
 		mVerticesCountBack = 0;
-		mVertices.position(0);
-		mColors.position(0);
+		mBufVertices.position(0);
+		mBufColors.position(0);
 		if (DRAW_TEXTURE) {
-			mTexCoords.position(0);
+			mBufTexCoords.position(0);
 		}
 
 		mDropShadowCount = mSelfShadowCount = 0;
@@ -741,99 +794,49 @@ public class CurlMesh {
 	}
 
 	/**
-	 * Sets new texture for this mesh.
+	 * Sets new textures for this mesh.
 	 */
-	public synchronized void setBitmap(Bitmap bitmap, Bitmap bitmapB) {
-		if (DRAW_TEXTURE) {
-			// Bitmap original size.
-			int w = bitmap.getWidth();
-			int h = bitmap.getHeight();
-			// Bitmap size expanded to next power of two. This is done due to
-			// the requirement on many devices, texture width and height should
-			// be power of two.
-			int newW = getNextHighestPO2(w);
-			int newH = getNextHighestPO2(h);
-			//Recycle the previous bitmap if it still exists.
-			if(mBitmap != null){
-				mBitmap.recycle();
-				mBitmap = null;
-			}
-			
-			if(mBitmapB != null){
-				mBitmapB.recycle();
-				mBitmapB = null;
-			}
-			// TODO: Is there another way to create a bigger Bitmap and copy
-			// original Bitmap to it more efficiently? Immutable bitmap anyone?
-			mBitmap = Bitmap.createBitmap(newW, newH, bitmap.getConfig());
-			Canvas c = new Canvas(mBitmap);
-			c.drawBitmap(bitmap, 0, 0, null);
-			//Recycle the now unused bitmap
-			bitmap.recycle();
-			bitmap = null;
-			
-			if (bitmapB != null){
-				// Bitmap original size.
-				int w2 = bitmapB.getWidth();
-				int h2 = bitmapB.getHeight();
-				// Bitmap size expanded to next power of two. This is done due to
-				// the requirement on many devices, texture width and height should
-				// be power of two.
-				int newW2 = getNextHighestPO2(w2);
-				int newH2 = getNextHighestPO2(h2);
-				// TODO: Is there another way to create a bigger Bitmap and copy
-				// original Bitmap to it more efficiently? Immutable bitmap anyone?
-				mBitmapB= Bitmap.createBitmap(newW2, newH2, bitmapB.getConfig());
-				Canvas c2 = new Canvas(mBitmapB);				
-				//CAGS: Flip Back facing Bitmap
-				Matrix flipHorizontalMatrix = new Matrix();
-				flipHorizontalMatrix.setScale(-1,1);
-				flipHorizontalMatrix.postTranslate(w2,0);
-				c2.drawBitmap(bitmapB, flipHorizontalMatrix, null);
-				//Recycle the now unused bitmap
-				bitmapB.recycle();
-				bitmapB = null;
-				
-			} else {
-				mBitmapB = mBitmap;
-			}
-			//CAGS: Store w2 for later flip
-			mWidthAux = w;
-			mNewTex = true;
-			// Calculate final texture coordinates.
-			float texX = (float) w / newW;
-			float texY = (float) h / newH;
-			mTextureRect.set(0f, 0f, texX, texY);
-			if (mFlipTexture) {
-				setTexCoords(texX, 0f, 0f, texY);
-			} else {
-				setTexCoords(0f, 0f, texX, texY);
-			}
+	public synchronized void setBitmap(Bitmap bitmapFront, Bitmap bitmapBack) {
+
+		if (bitmapFront == null) {
+			bitmapFront = Bitmap.createBitmap(2, 2, Bitmap.Config.RGB_565);
+		}
+		if (bitmapBack == null) {
+			bitmapBack = Bitmap.createBitmap(2, 2, Bitmap.Config.RGB_565);
+		}
+
+		mTextureFront = setBitmap(bitmapFront, mTextureRectFront);
+		mTextureBack = setBitmap(bitmapBack, mTextureRectBack);
+
+		if (mFlipTexture) {
+			setTexCoords(1f, 0f, 0f, 1f);
+		} else {
+			setTexCoords(0f, 0f, 1f, 1f);
 		}
 	}
-	
-	/**
-	 * Swap Front and Back Sheets/Textures.  
-	 */
-	/*CAGS: This method depends on keeping the mBitmaps objects, I supose
-	  it consume more memory due to keep those bitmaps in memory.*/
-	// TODO: Optimize the swap of textures without keeping the mBitmaps 
-	// in memory, see draw() method for a reference on how I was trying to do it
-	public void swapSheet (){
-		Bitmap aux;
-		aux = mBitmap;
-		mBitmap= Bitmap.createBitmap(mBitmapB);
-		Canvas c = new Canvas(mBitmap);
-		//Flip Matrix
-		Matrix flipHorizontalMatrix = new Matrix();
-		flipHorizontalMatrix.setScale(-1,1);
-		flipHorizontalMatrix.postTranslate(mWidthAux,0);
-		c.drawBitmap(mBitmap, flipHorizontalMatrix, null);
-		
-		mBitmapB= Bitmap.createBitmap(aux);
-		Canvas c2 = new Canvas(mBitmapB);
-		c2.drawBitmap(mBitmapB, flipHorizontalMatrix, null);
-		mNewTex = true;
+
+	private Bitmap setBitmap(Bitmap bitmap, RectF textureRect) {
+		// Bitmap original size.
+		int w = bitmap.getWidth();
+		int h = bitmap.getHeight();
+		// Bitmap size expanded to next power of two. This is done due to
+		// the requirement on many devices, texture width and height should
+		// be power of two.
+		int newW = getNextHighestPO2(w);
+		int newH = getNextHighestPO2(h);
+
+		// TODO: Is there another way to create a bigger Bitmap and copy
+		// original Bitmap to it more efficiently? Immutable bitmap anyone?
+		Bitmap bitmapTex = Bitmap.createBitmap(newW, newH, bitmap.getConfig());
+		Canvas c = new Canvas(bitmapTex);
+		c.drawBitmap(bitmap, 0, 0, null);
+
+		// Calculate final texture coordinates.
+		float texX = (float) w / newW;
+		float texY = (float) h / newH;
+		textureRect.set(0f, 0f, texX, texY);
+
+		return bitmapTex;
 	}
 
 	/**
@@ -841,18 +844,10 @@ public class CurlMesh {
 	 */
 	public synchronized void setFlipTexture(boolean flipTexture) {
 		mFlipTexture = flipTexture;
-
-		if (mFlipTexture) {
-			setTexCoords(mTextureRect.right, mTextureRect.top,
-					mTextureRect.left, mTextureRect.bottom);
+		if (flipTexture) {
+			setTexCoords(1f, 0f, 0f, 1f);
 		} else {
-			setTexCoords(mTextureRect.left, mTextureRect.top,
-					mTextureRect.right, mTextureRect.bottom);
-		}
-
-		for (int i = 0; i < 4; ++i) {
-			mRectangle[i].mAlpha = mFlipTexture ? BACKFACE_ALPHA
-					: FRONTFACE_ALPHA;
+			setTexCoords(0f, 0f, 1f, 1f);
 		}
 	}
 
@@ -868,72 +863,6 @@ public class CurlMesh {
 		mRectangle[2].mPosY = r.top;
 		mRectangle[3].mPosX = r.right;
 		mRectangle[3].mPosY = r.bottom;
-	}
-
-	/**
-	 * Adds vertex to buffers.
-	 */
-	private void addVertex(Vertex vertex) {
-		mVertices.put((float) vertex.mPosX);
-		mVertices.put((float) vertex.mPosY);
-		mVertices.put((float) vertex.mPosZ);
-		mColors.put((float) vertex.mColor);
-		mColors.put((float) vertex.mColor);
-		mColors.put((float) vertex.mColor);
-		mColors.put((float) vertex.mAlpha);
-		if (DRAW_TEXTURE) {
-			mTexCoords.put((float) vertex.mTexX);
-			mTexCoords.put((float) vertex.mTexY);
-		}
-	}
-
-	/**
-	 * Calculates intersections for given scan line.
-	 */
-	private Array<Vertex> getIntersections(Array<Vertex> vertices,
-			int[][] lineIndices, double scanX) {
-		mIntersections.clear();
-		// Iterate through rectangle lines each re-presented as a pair of
-		// vertices.
-		for (int j = 0; j < lineIndices.length; j++) {
-			Vertex v1 = vertices.get(lineIndices[j][0]);
-			Vertex v2 = vertices.get(lineIndices[j][1]);
-			// Here we expect that v1.mPosX >= v2.mPosX and wont do intersection
-			// test the opposite way.
-			if (v1.mPosX > scanX && v2.mPosX < scanX) {
-				// There is an intersection, calculate coefficient telling 'how
-				// far' scanX is from v2.
-				double c = (scanX - v2.mPosX) / (v1.mPosX - v2.mPosX);
-				Vertex n = mTempVertices.remove(0);
-				n.set(v2);
-				n.mPosX = scanX;
-				n.mPosY += (v1.mPosY - v2.mPosY) * c;
-				if (DRAW_TEXTURE) {
-					n.mTexX += (v1.mTexX - v2.mTexX) * c;
-					n.mTexY += (v1.mTexY - v2.mTexY) * c;
-				}
-				if (DRAW_SHADOW) {
-					n.mPenumbraX += (v1.mPenumbraX - v2.mPenumbraX) * c;
-					n.mPenumbraY += (v1.mPenumbraY - v2.mPenumbraY) * c;
-				}
-				mIntersections.add(n);
-			}
-		}
-		return mIntersections;
-	}
-
-	/**
-	 * Calculates the next highest power of two for a given integer.
-	 */
-	private int getNextHighestPO2(int n) {
-		n -= 1;
-		n = n | (n >> 1);
-		n = n | (n >> 2);
-		n = n | (n >> 4);
-		n = n | (n >> 8);
-		n = n | (n >> 16);
-		n = n | (n >> 32);
-		return n + 1;
 	}
 
 	/**
@@ -956,8 +885,8 @@ public class CurlMesh {
 	 */
 	private class Array<T> {
 		private Object[] mArray;
-		private int mSize;
 		private int mCapacity;
+		private int mSize;
 
 		public Array(int capacity) {
 			mCapacity = capacity;
@@ -1026,31 +955,30 @@ public class CurlMesh {
 	 * Holder for shadow vertex information.
 	 */
 	private class ShadowVertex {
+		public double mPenumbraColor;
+		public double mPenumbraX;
+		public double mPenumbraY;
 		public double mPosX;
 		public double mPosY;
 		public double mPosZ;
-		public double mPenumbraX;
-		public double mPenumbraY;
-		public double mPenumbraColor;
 	}
 
 	/**
 	 * Holder for vertex information.
 	 */
 	private class Vertex {
+		public double mColor;
+		public double mPenumbraX;
+		public double mPenumbraY;
 		public double mPosX;
 		public double mPosY;
 		public double mPosZ;
 		public double mTexX;
 		public double mTexY;
-		public double mPenumbraX;
-		public double mPenumbraY;
-		public double mColor;
-		public double mAlpha;
 
 		public Vertex() {
 			mPosX = mPosY = mPosZ = mTexX = mTexY = 0;
-			mColor = mAlpha = 1;
+			mColor = 1;
 		}
 
 		public void rotateZ(double theta) {
@@ -1075,7 +1003,6 @@ public class CurlMesh {
 			mPenumbraX = vertex.mPenumbraX;
 			mPenumbraY = vertex.mPenumbraY;
 			mColor = vertex.mColor;
-			mAlpha = vertex.mAlpha;
 		}
 
 		public void translate(double dx, double dy) {

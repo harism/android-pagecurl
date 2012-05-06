@@ -1,5 +1,5 @@
 /*
-   Copyright 2011 Harri Smått
+   Copyright 2012 Harri Smatt
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
-*/
+ */
 
 package fi.harism.curl;
 
@@ -34,36 +34,36 @@ import android.opengl.GLU;
  */
 public class CurlRenderer implements GLSurfaceView.Renderer {
 
-	// Constants for changing view mode.
-	public static final int SHOW_ONE_PAGE = 1;
-	public static final int SHOW_TWO_PAGES = 2;
-	private int mViewMode = SHOW_ONE_PAGE;
-
 	// Constant for requesting left page rect.
 	public static final int PAGE_LEFT = 1;
 	// Constant for requesting right page rect.
 	public static final int PAGE_RIGHT = 2;
+	// Constants for changing view mode.
+	public static final int SHOW_ONE_PAGE = 1;
 
+	public static final int SHOW_TWO_PAGES = 2;
 	// Set to true for checking quickly how perspective projection looks.
 	private static final boolean USE_PERSPECTIVE_PROJECTION = false;
 
-	// Rect for render area.
-	private RectF mViewRect = new RectF();
-	private RectF mMargins = new RectF();
-	// Screen size.
-	private int mViewportWidth;
-	private int mViewportHeight;
-
-	// Curl meshes used for static and dynamic rendering.
-	private Vector<CurlMesh> mCurlMeshes;
-
-	private boolean mBackgroundColorChanged = false;
 	private int mBackgroundColor;
 
+	private boolean mBackgroundColorChanged = false;
+	// Curl meshes used for static and dynamic rendering.
+	private Vector<CurlMesh> mCurlMeshes;
+	private RectF mMargins = new RectF();
 	private CurlRenderer.Observer mObserver;
 
 	private RectF mPageRectLeft;
+
 	private RectF mPageRectRight;
+	private int mViewMode = SHOW_ONE_PAGE;
+
+	private int mViewportHeight;
+
+	// Screen size.
+	private int mViewportWidth;
+	// Rect for render area.
+	private RectF mViewRect = new RectF();
 
 	/**
 	 * Basic constructor.
