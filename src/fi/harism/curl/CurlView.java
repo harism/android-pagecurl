@@ -678,6 +678,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			}
 			mPageRight.setBitmap(bitmapTop, bitmapBottom);
 
+			mPageRight.setFlipTexture(false);
 			mPageRight.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT));
 			mPageRight.reset();
 			mRenderer.addCurlMesh(mPageRight);
