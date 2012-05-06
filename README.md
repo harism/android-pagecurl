@@ -1,11 +1,14 @@
 NOTE
 ====
 
-As of this commit all "pages" will be 2-sided. Meaning indices { 0, 2, 4, 6, ...}
+As of this commit all "pages" will be 2-sided. Meaning bitmap indices { 0, 2, 4, 6, ...}
 are front-facing and { 1, 3, 5, 7, ...} back-facing ones. This happens when page is on right side.
-On left side page is "flipped over" similarly as a page does on a regular book.
+On left side page is "flipped over" similarly as a page does on a regular book. From BitmapProvider
+point of view this doesn't cause you any additional work though but should be automatically handled
+for you.
 
-Here's an example video from cags12 showing 2-sided page support in landscape mode;
+Here's an example video from [cags12](https://github.com/cags12) showing 2-sided page support in landscape mode;
+
 [http://www.youtube.com/watch?v=iwu7P5PCpsw]
 
 Introduction
