@@ -1,11 +1,13 @@
 NOTE
 ====
 
-As of this commit all "pages" will be 2-sided. Meaning bitmap indices { 0, 2, 4, 6, ...}
-are front-facing and { 1, 3, 5, 7, ...} back-facing ones. This happens when page is on right side.
-On left side page is "flipped over" similarly as a page does on a regular book. From BitmapProvider
-point of view this doesn't cause you any additional work though but should be automatically handled
-for you.
+As of this commit all "pages" will be 2-sided. There's a new class CurlPage, using which
+you can assign a separate texture on both sides, one for front side only, or same
+texture can be shared on both sides. CurlPage contains also color values for blending
+which allows you to e.g share texture on both sides but do alpha blending
+only on back side of the page, leaving you with exactly same effect what earlier
+version of this example application did. This time with the difference there's
+some more freedom included.
 
 Here's an example video from [cags12](https://github.com/cags12) showing 2-sided page support in landscape mode;
 
