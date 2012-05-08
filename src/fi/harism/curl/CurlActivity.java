@@ -19,6 +19,7 @@ package fi.harism.curl;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
@@ -81,7 +82,7 @@ public class CurlActivity extends Activity {
 
 		@Override
 		public int getPageCount() {
-			return 4;
+			return 5;
 		}
 
 		private Bitmap loadBitmap(int width, int height, int index) {
@@ -131,34 +132,43 @@ public class CurlActivity extends Activity {
 			case 0: {
 				Bitmap front = loadBitmap(width, height, 0);
 				page.setTexture(front, CurlPage.SIDE_FRONT);
-				page.setColor(0xFFD0D0D0, CurlPage.SIDE_BACK);
+				page.setColor(Color.rgb(180, 180, 180), CurlPage.SIDE_BACK);
 				break;
 			}
-			// Second case is images on both sides.
+			// Second case is image on back side, solid colored front.
 			case 1: {
+				Bitmap back = loadBitmap(width, height, 2);
+				page.setTexture(back, CurlPage.SIDE_BACK);
+				page.setColor(Color.rgb(127, 140, 180), CurlPage.SIDE_FRONT);
+				break;
+			}
+			// Third case is images on both sides.
+			case 2: {
 				Bitmap front = loadBitmap(width, height, 1);
 				Bitmap back = loadBitmap(width, height, 3);
 				page.setTexture(front, CurlPage.SIDE_FRONT);
 				page.setTexture(back, CurlPage.SIDE_BACK);
 				break;
 			}
-			// Third case is images on both sides - plus they are blend against
+			// Fourth case is images on both sides - plus they are blend against
 			// separate colors.
-			case 2: {
+			case 3: {
 				Bitmap front = loadBitmap(width, height, 2);
 				Bitmap back = loadBitmap(width, height, 1);
 				page.setTexture(front, CurlPage.SIDE_FRONT);
 				page.setTexture(back, CurlPage.SIDE_BACK);
-				page.setColor(0x80C0A0FF, CurlPage.SIDE_FRONT);
-				page.setColor(0xFFFFC080, CurlPage.SIDE_BACK);
+				page.setColor(Color.argb(127, 170, 130, 255),
+						CurlPage.SIDE_FRONT);
+				page.setColor(Color.rgb(255, 190, 150), CurlPage.SIDE_BACK);
 				break;
 			}
-			// Fourth case is same image is assigned to front and back. In this
+			// Fifth case is same image is assigned to front and back. In this
 			// scenario only one texture is used and shared for both sides.
-			case 3:
+			case 4:
 				Bitmap front = loadBitmap(width, height, 0);
 				page.setTexture(front, CurlPage.SIDE_BOTH);
-				page.setColor(0x80FFFFFF, CurlPage.SIDE_BACK);
+				page.setColor(Color.argb(127, 255, 255, 255),
+						CurlPage.SIDE_BACK);
 				break;
 			}
 		}
