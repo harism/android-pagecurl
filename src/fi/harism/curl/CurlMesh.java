@@ -23,7 +23,7 @@ import java.nio.FloatBuffer;
 import javax.microedition.khronos.opengles.GL10;
 
 import android.graphics.Bitmap;
-import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.PointF;
 import android.graphics.RectF;
 import android.opengl.GLUtils;
@@ -87,15 +87,15 @@ public class CurlMesh {
 	// Bounding rectangle for this mesh. mRectagle[0] = top-left corner,
 	// mRectangle[1] = bottom-left, mRectangle[2] = top-right and mRectangle[3]
 	// bottom-right.
-	private Vertex[] mRectangle = new Vertex[4];
+	private final Vertex[] mRectangle = new Vertex[4];
 	private int mSelfShadowCount;
 
-	private Bitmap mTextureBack;
-	private Bitmap mTextureFront;
+	private boolean mTextureBack = false;
 	// Texture ids and other variables.
-	private int[] mTextureIds;
-	private RectF mTextureRectBack = new RectF();
-	private RectF mTextureRectFront = new RectF();
+	private int[] mTextureIds = null;
+	private final CurlPage mTexturePage = new CurlPage();
+	private final RectF mTextureRectBack = new RectF();
+	private final RectF mTextureRectFront = new RectF();
 
 	private int mVerticesCountBack;
 	private int mVerticesCountFront;
@@ -199,11 +199,10 @@ public class CurlMesh {
 		mBufVertices.put((float) vertex.mPosX);
 		mBufVertices.put((float) vertex.mPosY);
 		mBufVertices.put((float) vertex.mPosZ);
-		mBufColors.put((float) vertex.mColor);
-		mBufColors.put((float) vertex.mColor);
-		mBufColors.put((float) vertex.mColor);
-		// Constant alpha.
-		mBufColors.put(1.0f);
+		mBufColors.put(vertex.mColorFactor * Color.red(vertex.mColor) / 255f);
+		mBufColors.put(vertex.mColorFactor * Color.green(vertex.mColor) / 255f);
+		mBufColors.put(vertex.mColorFactor * Color.blue(vertex.mColor) / 255f);
+		mBufColors.put(Color.alpha(vertex.mColor) / 255f);
 		if (DRAW_TEXTURE) {
 			mBufTexCoords.put((float) vertex.mTexX);
 			mBufTexCoords.put((float) vertex.mTexY);
@@ -442,7 +441,8 @@ public class CurlMesh {
 					v.mPosZ = radius - (radius * Math.cos(rotY));
 					v.mPenumbraX *= Math.cos(rotY);
 					// Map color multiplier to [.1f, 1f] range.
-					v.mColor = .1f + .9f * Math.sqrt(Math.sin(rotY) + 1);
+					v.mColorFactor = (float) (.1f + .9f * Math.sqrt(Math
+							.sin(rotY) + 1));
 
 					if (v.mPosZ >= radius) {
 						textureFront = false;
@@ -461,9 +461,11 @@ public class CurlMesh {
 				if (textureFront != mFlipTexture) {
 					v.mTexX *= mTextureRectFront.right;
 					v.mTexY *= mTextureRectFront.bottom;
+					v.mColor = mTexturePage.getColor(CurlPage.SIDE_FRONT);
 				} else {
 					v.mTexX = (1f - v.mTexX) * mTextureRectBack.right;
 					v.mTexY *= mTextureRectBack.bottom;
+					v.mColor = mTexturePage.getColor(CurlPage.SIDE_BACK);
 				}
 
 				// Move vertex back to 'world' coordinates.
@@ -554,21 +556,63 @@ public class CurlMesh {
 	}
 
 	/**
-	 * Draws our mesh.
+	 * Calculates intersections for given scan line.
 	 */
-	public synchronized void draw(GL10 gl) {
+	private Array<Vertex> getIntersections(Array<Vertex> vertices,
+			int[][] lineIndices, double scanX) {
+		mArrIntersections.clear();
+		// Iterate through rectangle lines each re-presented as a pair of
+		// vertices.
+		for (int j = 0; j < lineIndices.length; j++) {
+			Vertex v1 = vertices.get(lineIndices[j][0]);
+			Vertex v2 = vertices.get(lineIndices[j][1]);
+			// Here we expect that v1.mPosX >= v2.mPosX and wont do intersection
+			// test the opposite way.
+			if (v1.mPosX > scanX && v2.mPosX < scanX) {
+				// There is an intersection, calculate coefficient telling 'how
+				// far' scanX is from v2.
+				double c = (scanX - v2.mPosX) / (v1.mPosX - v2.mPosX);
+				Vertex n = mArrTempVertices.remove(0);
+				n.set(v2);
+				n.mPosX = scanX;
+				n.mPosY += (v1.mPosY - v2.mPosY) * c;
+				if (DRAW_TEXTURE) {
+					n.mTexX += (v1.mTexX - v2.mTexX) * c;
+					n.mTexY += (v1.mTexY - v2.mTexY) * c;
+				}
+				if (DRAW_SHADOW) {
+					n.mPenumbraX += (v1.mPenumbraX - v2.mPenumbraX) * c;
+					n.mPenumbraY += (v1.mPenumbraY - v2.mPenumbraY) * c;
+				}
+				mArrIntersections.add(n);
+			}
+		}
+		return mArrIntersections;
+	}
+
+	/**
+	 * Getter for textures page for this mesh.
+	 */
+	public synchronized CurlPage getTexturePage() {
+		return mTexturePage;
+	}
+
+	/**
+	 * Renders our page curl mesh.
+	 */
+	public synchronized void onDrawFrame(GL10 gl) {
 		// First allocate texture if there is not one yet.
 		if (DRAW_TEXTURE && mTextureIds == null) {
 			// Generate texture.
 			mTextureIds = new int[2];
 			gl.glGenTextures(2, mTextureIds, 0);
-			for (int texId : mTextureIds) {
+			for (int textureId : mTextureIds) {
 				// Set texture attributes.
-				gl.glBindTexture(GL10.GL_TEXTURE_2D, texId);
+				gl.glBindTexture(GL10.GL_TEXTURE_2D, textureId);
 				gl.glTexParameterf(GL10.GL_TEXTURE_2D,
-						GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_LINEAR);
+						GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_NEAREST);
 				gl.glTexParameterf(GL10.GL_TEXTURE_2D,
-						GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_LINEAR);
+						GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_NEAREST);
 				gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_S,
 						GL10.GL_CLAMP_TO_EDGE);
 				gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_T,
@@ -576,19 +620,26 @@ public class CurlMesh {
 			}
 		}
 
-		// If mTextureFront != null we have a new texture.
-		if (DRAW_TEXTURE && mTextureFront != null) {
+		if (DRAW_TEXTURE && mTexturePage.getTexturesChanged()) {
 			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
-			GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, mTextureFront, 0);
-			mTextureFront.recycle();
-			mTextureFront = null;
-		}
-		// If mTextureBack != null we have a new texture.
-		if (DRAW_TEXTURE && mTextureBack != null) {
-			gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[1]);
-			GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, mTextureBack, 0);
-			mTextureBack.recycle();
-			mTextureBack = null;
+			Bitmap texture = mTexturePage.getTexture(mTextureRectFront,
+					CurlPage.SIDE_FRONT);
+			GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, texture, 0);
+			texture.recycle();
+
+			mTextureBack = mTexturePage.hasBackTexture();
+			if (mTextureBack) {
+				gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[1]);
+				texture = mTexturePage.getTexture(mTextureRectBack,
+						CurlPage.SIDE_BACK);
+				GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, texture, 0);
+				texture.recycle();
+			} else {
+				mTextureRectBack.set(mTextureRectFront);
+			}
+
+			mTexturePage.recycle();
+			reset();
 		}
 
 		// Some 'global' settings.
@@ -608,46 +659,58 @@ public class CurlMesh {
 			gl.glDisable(GL10.GL_BLEND);
 		}
 
-		gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mBufVertices);
-
-		// Enable color array.
-		gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
-		gl.glColorPointer(4, GL10.GL_FLOAT, 0, mBufColors);
-
 		if (DRAW_TEXTURE) {
 			gl.glEnableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
 			gl.glTexCoordPointer(2, GL10.GL_FLOAT, 0, mBufTexCoords);
 		}
+		gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mBufVertices);
+		// Enable color array.
+		gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
+		gl.glColorPointer(4, GL10.GL_FLOAT, 0, mBufColors);
+
+		// Draw front facing blank vertices.
+		gl.glDisable(GL10.GL_TEXTURE_2D);
+		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, mVerticesCountFront);
 
 		// Draw front facing texture.
 		if (DRAW_TEXTURE) {
-			gl.glDisable(GL10.GL_BLEND);
+			gl.glEnable(GL10.GL_BLEND);
 			gl.glEnable(GL10.GL_TEXTURE_2D);
 
-			if (mFlipTexture) {
-				gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[1]);
-			} else {
+			if (!mFlipTexture || !mTextureBack) {
 				gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
+			} else {
+				gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[1]);
 			}
 
+			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
 			gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, 0, mVerticesCountFront);
+
+			gl.glDisable(GL10.GL_BLEND);
 			gl.glDisable(GL10.GL_TEXTURE_2D);
 		}
 
 		int backStartIdx = Math.max(0, mVerticesCountFront - 2);
 		int backCount = mVerticesCountFront + mVerticesCountBack - backStartIdx;
+
+		// Draw back facing blank vertices.
+		gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, backStartIdx, backCount);
+
 		// Draw back facing texture.
 		if (DRAW_TEXTURE) {
-			gl.glDisable(GL10.GL_BLEND);
+			gl.glEnable(GL10.GL_BLEND);
 			gl.glEnable(GL10.GL_TEXTURE_2D);
 
-			if (mFlipTexture) {
+			if (mFlipTexture || !mTextureBack) {
 				gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[0]);
 			} else {
 				gl.glBindTexture(GL10.GL_TEXTURE_2D, mTextureIds[1]);
 			}
 
+			gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
 			gl.glDrawArrays(GL10.GL_TRIANGLE_STRIP, backStartIdx, backCount);
+
+			gl.glDisable(GL10.GL_BLEND);
 			gl.glDisable(GL10.GL_TEXTURE_2D);
 		}
 
@@ -691,63 +754,6 @@ public class CurlMesh {
 	}
 
 	/**
-	 * Calculates intersections for given scan line.
-	 */
-	private Array<Vertex> getIntersections(Array<Vertex> vertices,
-			int[][] lineIndices, double scanX) {
-		mArrIntersections.clear();
-		// Iterate through rectangle lines each re-presented as a pair of
-		// vertices.
-		for (int j = 0; j < lineIndices.length; j++) {
-			Vertex v1 = vertices.get(lineIndices[j][0]);
-			Vertex v2 = vertices.get(lineIndices[j][1]);
-			// Here we expect that v1.mPosX >= v2.mPosX and wont do intersection
-			// test the opposite way.
-			if (v1.mPosX > scanX && v2.mPosX < scanX) {
-				// There is an intersection, calculate coefficient telling 'how
-				// far' scanX is from v2.
-				double c = (scanX - v2.mPosX) / (v1.mPosX - v2.mPosX);
-				Vertex n = mArrTempVertices.remove(0);
-				n.set(v2);
-				n.mPosX = scanX;
-				n.mPosY += (v1.mPosY - v2.mPosY) * c;
-				if (DRAW_TEXTURE) {
-					n.mTexX += (v1.mTexX - v2.mTexX) * c;
-					n.mTexY += (v1.mTexY - v2.mTexY) * c;
-				}
-				if (DRAW_SHADOW) {
-					n.mPenumbraX += (v1.mPenumbraX - v2.mPenumbraX) * c;
-					n.mPenumbraY += (v1.mPenumbraY - v2.mPenumbraY) * c;
-				}
-				mArrIntersections.add(n);
-			}
-		}
-		return mArrIntersections;
-	}
-
-	/**
-	 * Calculates the next highest power of two for a given integer.
-	 */
-	private int getNextHighestPO2(int n) {
-		n -= 1;
-		n = n | (n >> 1);
-		n = n | (n >> 2);
-		n = n | (n >> 4);
-		n = n | (n >> 8);
-		n = n | (n >> 16);
-		n = n | (n >> 32);
-		return n + 1;
-	}
-
-	/*
-	 * private synchronized void adjustTextureCoords(Vertex v, boolean front) {
-	 * front = front ^ mFlipTexture; if (front) { v.mTexX *=
-	 * mTextureRectFront.right; v.mTexY *= mTextureRectFront.bottom; } else {
-	 * v.mTexX *= (1f - v.mTexX) * mTextureRectBack.right; v.mTexY *=
-	 * mTextureRectBack.bottom; } }
-	 */
-
-	/**
 	 * Resets mesh to 'initial' state. Meaning this mesh will draw a plain
 	 * textured rectangle after call to this method.
 	 */
@@ -764,9 +770,11 @@ public class CurlMesh {
 			if (mFlipTexture) {
 				tmp.mTexX = (1f - tmp.mTexX) * mTextureRectBack.right;
 				tmp.mTexY *= mTextureRectBack.bottom;
+				tmp.mColor = mTexturePage.getColor(CurlPage.SIDE_BACK);
 			} else {
 				tmp.mTexX *= mTextureRectFront.right;
 				tmp.mTexY *= mTextureRectFront.bottom;
+				tmp.mColor = mTexturePage.getColor(CurlPage.SIDE_FRONT);
 			}
 
 			addVertex(tmp);
@@ -791,52 +799,6 @@ public class CurlMesh {
 	 */
 	public synchronized void resetTexture() {
 		mTextureIds = null;
-	}
-
-	/**
-	 * Sets new textures for this mesh.
-	 */
-	public synchronized void setBitmap(Bitmap bitmapFront, Bitmap bitmapBack) {
-
-		if (bitmapFront == null) {
-			bitmapFront = Bitmap.createBitmap(2, 2, Bitmap.Config.RGB_565);
-		}
-		if (bitmapBack == null) {
-			bitmapBack = Bitmap.createBitmap(2, 2, Bitmap.Config.RGB_565);
-		}
-
-		mTextureFront = setBitmap(bitmapFront, mTextureRectFront);
-		mTextureBack = setBitmap(bitmapBack, mTextureRectBack);
-
-		if (mFlipTexture) {
-			setTexCoords(1f, 0f, 0f, 1f);
-		} else {
-			setTexCoords(0f, 0f, 1f, 1f);
-		}
-	}
-
-	private Bitmap setBitmap(Bitmap bitmap, RectF textureRect) {
-		// Bitmap original size.
-		int w = bitmap.getWidth();
-		int h = bitmap.getHeight();
-		// Bitmap size expanded to next power of two. This is done due to
-		// the requirement on many devices, texture width and height should
-		// be power of two.
-		int newW = getNextHighestPO2(w);
-		int newH = getNextHighestPO2(h);
-
-		// TODO: Is there another way to create a bigger Bitmap and copy
-		// original Bitmap to it more efficiently? Immutable bitmap anyone?
-		Bitmap bitmapTex = Bitmap.createBitmap(newW, newH, bitmap.getConfig());
-		Canvas c = new Canvas(bitmapTex);
-		c.drawBitmap(bitmap, 0, 0, null);
-
-		// Calculate final texture coordinates.
-		float texX = (float) w / newW;
-		float texY = (float) h / newH;
-		textureRect.set(0f, 0f, texX, texY);
-
-		return bitmapTex;
 	}
 
 	/**
@@ -967,7 +929,8 @@ public class CurlMesh {
 	 * Holder for vertex information.
 	 */
 	private class Vertex {
-		public double mColor;
+		public int mColor;
+		public float mColorFactor;
 		public double mPenumbraX;
 		public double mPenumbraY;
 		public double mPosX;
@@ -978,7 +941,7 @@ public class CurlMesh {
 
 		public Vertex() {
 			mPosX = mPosY = mPosZ = mTexX = mTexY = 0;
-			mColor = 1;
+			mColorFactor = 1.0f;
 		}
 
 		public void rotateZ(double theta) {
@@ -1003,6 +966,7 @@ public class CurlMesh {
 			mPenumbraX = vertex.mPenumbraX;
 			mPenumbraY = vertex.mPenumbraY;
 			mColor = vertex.mColor;
+			mColorFactor = vertex.mColorFactor;
 		}
 
 		public void translate(double dx, double dy) {

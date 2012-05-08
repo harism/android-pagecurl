@@ -117,7 +117,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		}
 
 		for (int i = 0; i < mCurlMeshes.size(); ++i) {
-			mCurlMeshes.get(i).draw(gl);
+			mCurlMeshes.get(i).onDrawFrame(gl);
 		}
 	}
 

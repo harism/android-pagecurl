@@ -43,7 +43,7 @@ public class CurlActivity extends Activity {
 			index = (Integer) getLastNonConfigurationInstance();
 		}
 		mCurlView = (CurlView) findViewById(R.id.curl);
-		mCurlView.setBitmapProvider(new BitmapProvider());
+		mCurlView.setPageProvider(new PageProvider());
 		mCurlView.setSizeChangedObserver(new SizeChangedObserver());
 		mCurlView.setCurrentIndex(index);
 		mCurlView.setBackgroundColor(0xFF202830);
@@ -73,28 +73,18 @@ public class CurlActivity extends Activity {
 	/**
 	 * Bitmap provider.
 	 */
-	private class BitmapProvider implements CurlView.BitmapProvider {
+	private class PageProvider implements CurlView.PageProvider {
 
+		// Bitmap resources.
 		private int[] mBitmapIds = { R.drawable.obama, R.drawable.road_rage,
 				R.drawable.taipei_101, R.drawable.world };
 
 		@Override
-		public Bitmap getBitmap(int width, int height, int index) {
+		public int getPageCount() {
+			return 4;
+		}
 
-			// For every "odd" bitmap (back-facing ones); 1, 3, 5, 7... Return a
-			// static few pixel default bitmap only.
-			if ((index & 0x01) == 0x01) {
-				final int colors[] = { 0xFF808080, 0xFFA0A0A0, 0xFFA0A0A0,
-						0xFF808080 };
-				Bitmap bitmap = Bitmap.createBitmap(colors, 2, 2,
-						Bitmap.Config.ARGB_8888);
-				return bitmap;
-			}
-
-			// For front facing bitmaps (even ones) change index --> index / 2
-			// --> 0, 1, 2, 3...
-			index >>= 1;
-
+		private Bitmap loadBitmap(int width, int height, int index) {
 			Bitmap b = Bitmap.createBitmap(width, height,
 					Bitmap.Config.ARGB_8888);
 			b.eraseColor(0xFFFFFFFF);
@@ -129,15 +119,50 @@ public class CurlActivity extends Activity {
 
 			d.setBounds(r);
 			d.draw(c);
+
 			return b;
 		}
 
 		@Override
-		public int getBitmapCount() {
-			// Number of bitmaps * 2 for we have mBitmapIds.length bitmaps +
-			// same amount of static "back-facing" bitmaps.
-			return mBitmapIds.length * 2;
+		public void updatePage(CurlPage page, int width, int height, int index) {
+
+			switch (index) {
+			// First case is image on front side, solid colored back.
+			case 0: {
+				Bitmap front = loadBitmap(width, height, 0);
+				page.setTexture(front, CurlPage.SIDE_FRONT);
+				page.setColor(0xFFD0D0D0, CurlPage.SIDE_BACK);
+				break;
+			}
+			// Second case is images on both sides.
+			case 1: {
+				Bitmap front = loadBitmap(width, height, 1);
+				Bitmap back = loadBitmap(width, height, 3);
+				page.setTexture(front, CurlPage.SIDE_FRONT);
+				page.setTexture(back, CurlPage.SIDE_BACK);
+				break;
+			}
+			// Third case is images on both sides - plus they are blend against
+			// separate colors.
+			case 2: {
+				Bitmap front = loadBitmap(width, height, 2);
+				Bitmap back = loadBitmap(width, height, 1);
+				page.setTexture(front, CurlPage.SIDE_FRONT);
+				page.setTexture(back, CurlPage.SIDE_BACK);
+				page.setColor(0x80C0A0FF, CurlPage.SIDE_FRONT);
+				page.setColor(0xFFFFC080, CurlPage.SIDE_BACK);
+				break;
+			}
+			// Fourth case is same image is assigned to front and back. In this
+			// scenario only one texture is used and shared for both sides.
+			case 3:
+				Bitmap front = loadBitmap(width, height, 0);
+				page.setTexture(front, CurlPage.SIDE_BOTH);
+				page.setColor(0x80FFFFFF, CurlPage.SIDE_BACK);
+				break;
+			}
 		}
+
 	}
 
 	/**
