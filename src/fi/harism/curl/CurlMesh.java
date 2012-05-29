@@ -20,8 +20,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
-import javax.microedition.khronos.opengles.GL10;
-
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.PointF;
@@ -60,7 +58,6 @@ public class CurlMesh {
 	private FloatBuffer mBufTexCoords;
 	private FloatBuffer mBufVertices;
 
-	private int mCurlPositionLinesCount;
 	private int mDropShadowCount;
 
 	// Boolean for 'flipping' texture sideways.

@@ -17,9 +17,7 @@
 package fi.harism.curl;
 
 import android.graphics.Bitmap;
-import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.RectF;
 
 /**
  * Storage class for page textures, blend colors and possibly some other values
