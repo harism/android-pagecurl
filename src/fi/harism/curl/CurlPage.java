@@ -59,60 +59,15 @@ public class CurlPage {
 	}
 
 	/**
-	 * Calculates the next highest power of two for a given integer.
+	 * Getter for textures.
+	 * 
 	 */
-	private int getNextHighestPO2(int n) {
-		n -= 1;
-		n = n | (n >> 1);
-		n = n | (n >> 2);
-		n = n | (n >> 4);
-		n = n | (n >> 8);
-		n = n | (n >> 16);
-		n = n | (n >> 32);
-		return n + 1;
-	}
-
-	/**
-	 * Generates nearest power of two sized Bitmap for give Bitmap. Returns this
-	 * new Bitmap using default return statement + original texture coordinates
-	 * are stored into RectF.
-	 */
-	private Bitmap getTexture(Bitmap bitmap, RectF textureRect) {
-		// Bitmap original size.
-		int w = bitmap.getWidth();
-		int h = bitmap.getHeight();
-		// Bitmap size expanded to next power of two. This is done due to
-		// the requirement on many devices, texture width and height should
-		// be power of two.
-		int newW = getNextHighestPO2(w);
-		int newH = getNextHighestPO2(h);
-
-		// TODO: Is there another way to create a bigger Bitmap and copy
-		// original Bitmap to it more efficiently? Immutable bitmap anyone?
-		Bitmap bitmapTex = Bitmap.createBitmap(newW, newH, bitmap.getConfig());
-		Canvas c = new Canvas(bitmapTex);
-		c.drawBitmap(bitmap, 0, 0, null);
-
-		// Calculate final texture coordinates.
-		float texX = (float) w / newW;
-		float texY = (float) h / newH;
-		textureRect.set(0f, 0f, texX, texY);
-
-		return bitmapTex;
-	}
-
-	/**
-	 * Getter for textures. Creates Bitmap sized to nearest power of two, copies
-	 * original Bitmap into it and returns it. RectF given as parameter is
-	 * filled with actual texture coordinates in this new upscaled texture
-	 * Bitmap.
-	 */
-	public Bitmap getTexture(RectF textureRect, int side) {
+	public Bitmap getTexture(int side) {
 		switch (side) {
 		case SIDE_FRONT:
-			return getTexture(mTextureFront, textureRect);
+			return mTextureFront;
 		default:
-			return getTexture(mTextureBack, textureRect);
+			return mTextureBack;
 		}
 	}
 

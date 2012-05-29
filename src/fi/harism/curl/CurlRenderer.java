@@ -24,8 +24,9 @@ import javax.microedition.khronos.opengles.GL10;
 import android.graphics.Color;
 import android.graphics.PointF;
 import android.graphics.RectF;
+import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
-import android.opengl.GLU;
+import android.opengl.Matrix;
 
 /**
  * Actual renderer class.
@@ -40,30 +41,70 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	public static final int PAGE_RIGHT = 2;
 	// Constants for changing view mode.
 	public static final int SHOW_ONE_PAGE = 1;
-
 	public static final int SHOW_TWO_PAGES = 2;
 	// Set to true for checking quickly how perspective projection looks.
-	private static final boolean USE_PERSPECTIVE_PROJECTION = false;
-
+	// private static final boolean USE_PERSPECTIVE_PROJECTION = false;
+	// Background color constant.
 	private int mBackgroundColor;
-
 	private boolean mBackgroundColorChanged = false;
 	// Curl meshes used for static and dynamic rendering.
 	private Vector<CurlMesh> mCurlMeshes;
 	private RectF mMargins = new RectF();
 	private CurlRenderer.Observer mObserver;
-
-	private RectF mPageRectLeft;
-
-	private RectF mPageRectRight;
+	// Page rectangles.
+	private final RectF mPageRectLeft;
+	private final RectF mPageRectRight;
+	// Projection matrix.
+	private final float[] mProjectionMatrix = new float[16];
+	// Shaders.
+	private final CurlShader mShaderShadow = new CurlShader();
+	private final CurlShader mShaderTexture = new CurlShader();
+	// View mode.
 	private int mViewMode = SHOW_ONE_PAGE;
-
-	private int mViewportHeight;
-
 	// Screen size.
-	private int mViewportWidth;
+	private int mViewportWidth, mViewportHeight;
 	// Rect for render area.
-	private RectF mViewRect = new RectF();
+	private final RectF mViewRect = new RectF();
+	
+	// Shaders.
+	private final String SHADER_SHADOW_FRAGMENT =
+			"precision mediump float;\n" +
+			"varying vec4 vColor;\n" +
+			"void main() {\n" +
+			"  gl_FragColor = vColor;\n" +
+			"}\n";
+	private final String SHADER_SHADOW_VERTEX =
+			"uniform mat4 uProjectionM;\n" +
+			"attribute vec3 aPosition;\n" +
+			"attribute vec4 aColor;\n" +
+			"varying vec4 vColor;\n" +
+			"void main() {\n" +
+			"  gl_Position = uProjectionM * vec4(aPosition, 1.0);\n" +
+			"  vColor = aColor;\n" +
+			"}\n";
+	private final String SHADER_TEXTURE_FRAGMENT =
+			"precision mediump float;\n" +
+			"varying vec4 vColor;\n" +
+			"varying vec2 vTextureCoord;\n" +
+			"uniform sampler2D sTexture;\n" +
+			"void main() {\n" +
+			"  gl_FragColor = texture2D(sTexture, vTextureCoord);\n" +
+			"  gl_FragColor.rgb *= vColor.rgb;\n" +
+			"  gl_FragColor = mix(vColor, gl_FragColor, vColor.a);\n" +
+			"  gl_FragColor.a = 1.0;\n" +
+			"}\n";
+	private final String SHADER_TEXTURE_VERTEX =
+			"uniform mat4 uProjectionM;\n" +
+			"attribute vec3 aPosition;\n" +
+			"attribute vec4 aColor;\n" +
+			"attribute vec2 aTextureCoord;\n" +
+			"varying vec4 vColor;\n" +
+			"varying vec2 vTextureCoord;\n" +
+			"void main() {\n" +
+			"  gl_Position = uProjectionM * vec4(aPosition, 1.0);\n" +
+			"  vColor = aColor;\n" +
+			"  vTextureCoord = aTextureCoord;\n" +
+			"}\n";
 
 	/**
 	 * Basic constructor.
@@ -97,33 +138,28 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	}
 
 	@Override
-	public synchronized void onDrawFrame(GL10 gl) {
+	public synchronized void onDrawFrame(GL10 unused) {
 
 		mObserver.onDrawFrame();
 
 		if (mBackgroundColorChanged) {
-			gl.glClearColor(Color.red(mBackgroundColor) / 255f,
+			GLES20.glClearColor(Color.red(mBackgroundColor) / 255f,
 					Color.green(mBackgroundColor) / 255f,
 					Color.blue(mBackgroundColor) / 255f,
 					Color.alpha(mBackgroundColor) / 255f);
 			mBackgroundColorChanged = false;
 		}
 
-		gl.glClear(GL10.GL_COLOR_BUFFER_BIT); // | GL10.GL_DEPTH_BUFFER_BIT);
-		gl.glLoadIdentity();
-
-		if (USE_PERSPECTIVE_PROJECTION) {
-			gl.glTranslatef(0, 0, -6f);
-		}
+		GLES20.glClear(GL10.GL_COLOR_BUFFER_BIT);
 
 		for (int i = 0; i < mCurlMeshes.size(); ++i) {
-			mCurlMeshes.get(i).onDrawFrame(gl);
+			mCurlMeshes.get(i).onDrawFrame(mShaderTexture, mShaderShadow);
 		}
 	}
 
 	@Override
-	public void onSurfaceChanged(GL10 gl, int width, int height) {
-		gl.glViewport(0, 0, width, height);
+	public void onSurfaceChanged(GL10 unused, int width, int height) {
+		GLES20.glViewport(0, 0, width, height);
 		mViewportWidth = width;
 		mViewportHeight = height;
 
@@ -134,29 +170,26 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		mViewRect.right = ratio;
 		updatePageRects();
 
-		gl.glMatrixMode(GL10.GL_PROJECTION);
-		gl.glLoadIdentity();
-		if (USE_PERSPECTIVE_PROJECTION) {
-			GLU.gluPerspective(gl, 20f, (float) width / height, .1f, 100f);
-		} else {
-			GLU.gluOrtho2D(gl, mViewRect.left, mViewRect.right,
-					mViewRect.bottom, mViewRect.top);
-		}
-
-		gl.glMatrixMode(GL10.GL_MODELVIEW);
-		gl.glLoadIdentity();
+		Matrix.orthoM(mProjectionMatrix, 0, -ratio, ratio, -1f, 1f, -10f, 10f);
+		mShaderTexture.useProgram();
+		GLES20.glUniformMatrix4fv(mShaderTexture.getHandle("uProjectionM"), 1, false, mProjectionMatrix, 0);
+		mShaderShadow.useProgram();
+		GLES20.glUniformMatrix4fv(mShaderShadow.getHandle("uProjectionM"), 1, false, mProjectionMatrix, 0);
 	}
 
 	@Override
-	public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-		gl.glClearColor(0f, 0f, 0f, 1f);
-		gl.glShadeModel(GL10.GL_SMOOTH);
-		gl.glHint(GL10.GL_PERSPECTIVE_CORRECTION_HINT, GL10.GL_NICEST);
-		gl.glHint(GL10.GL_LINE_SMOOTH_HINT, GL10.GL_NICEST);
-		gl.glHint(GL10.GL_POLYGON_SMOOTH_HINT, GL10.GL_NICEST);
-		gl.glEnable(GL10.GL_LINE_SMOOTH);
-		gl.glDisable(GL10.GL_DEPTH_TEST);
-		gl.glDisable(GL10.GL_CULL_FACE);
+	public void onSurfaceCreated(GL10 unused, EGLConfig config) {
+		GLES20.glClearColor(0f, 0f, 0f, 1f);
+		GLES20.glEnable(GL10.GL_LINE_SMOOTH);
+		GLES20.glDisable(GL10.GL_DEPTH_TEST);
+		GLES20.glDisable(GL10.GL_CULL_FACE);
+		
+		try {
+			mShaderShadow.setProgram(SHADER_SHADOW_VERTEX, SHADER_SHADOW_FRAGMENT);
+			mShaderTexture.setProgram(SHADER_TEXTURE_VERTEX, SHADER_TEXTURE_FRAGMENT);
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
 
 		mObserver.onSurfaceCreated();
 	}
