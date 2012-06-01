@@ -45,8 +45,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	// Set to true for checking quickly how perspective projection looks.
 	// private static final boolean USE_PERSPECTIVE_PROJECTION = false;
 	// Background color constant.
-	private int mBackgroundColor;
-	private boolean mBackgroundColorChanged = false;
+	private int mBackgroundColor = 0xFF000000;
 	// Curl meshes used for static and dynamic rendering.
 	private Vector<CurlMesh> mCurlMeshes;
 	private RectF mMargins = new RectF();
@@ -142,15 +141,11 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 
 		mObserver.onDrawFrame();
 
-		if (mBackgroundColorChanged) {
-			GLES20.glClearColor(Color.red(mBackgroundColor) / 255f,
-					Color.green(mBackgroundColor) / 255f,
-					Color.blue(mBackgroundColor) / 255f,
-					Color.alpha(mBackgroundColor) / 255f);
-			mBackgroundColorChanged = false;
-		}
-
-		GLES20.glClear(GL10.GL_COLOR_BUFFER_BIT);
+		GLES20.glClearColor(Color.red(mBackgroundColor) / 255f,
+							Color.green(mBackgroundColor) / 255f,
+							Color.blue(mBackgroundColor) / 255f,
+							Color.alpha(mBackgroundColor) / 255f);
+		GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
 		for (int i = 0; i < mCurlMeshes.size(); ++i) {
 			mCurlMeshes.get(i).onDrawFrame(mShaderTexture, mShaderShadow);
@@ -179,10 +174,8 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 
 	@Override
 	public void onSurfaceCreated(GL10 unused, EGLConfig config) {
-		GLES20.glClearColor(0f, 0f, 0f, 1f);
-		GLES20.glEnable(GL10.GL_LINE_SMOOTH);
-		GLES20.glDisable(GL10.GL_DEPTH_TEST);
-		GLES20.glDisable(GL10.GL_CULL_FACE);
+		GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+		GLES20.glDisable(GLES20.GL_CULL_FACE);
 		
 		try {
 			mShaderShadow.setProgram(SHADER_SHADOW_VERTEX, SHADER_SHADOW_FRAGMENT);
@@ -207,7 +200,6 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	 */
 	public void setBackgroundColor(int color) {
 		mBackgroundColor = color;
-		mBackgroundColorChanged = true;
 	}
 
 	/**
