@@ -40,28 +40,22 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	public static final int PAGE_RIGHT = 2;
 	// Constants for changing view mode.
 	public static final int SHOW_ONE_PAGE = 1;
-
 	public static final int SHOW_TWO_PAGES = 2;
 	// Set to true for checking quickly how perspective projection looks.
 	private static final boolean USE_PERSPECTIVE_PROJECTION = false;
-
+	// Background fill color.
 	private int mBackgroundColor;
-
-	private boolean mBackgroundColorChanged = false;
 	// Curl meshes used for static and dynamic rendering.
 	private Vector<CurlMesh> mCurlMeshes;
 	private RectF mMargins = new RectF();
 	private CurlRenderer.Observer mObserver;
-
+	// Page rectangles.
 	private RectF mPageRectLeft;
-
 	private RectF mPageRectRight;
+	// View mode.
 	private int mViewMode = SHOW_ONE_PAGE;
-
-	private int mViewportHeight;
-
 	// Screen size.
-	private int mViewportWidth;
+	private int mViewportWidth, mViewportHeight;
 	// Rect for render area.
 	private RectF mViewRect = new RectF();
 
@@ -101,15 +95,11 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 
 		mObserver.onDrawFrame();
 
-		if (mBackgroundColorChanged) {
-			gl.glClearColor(Color.red(mBackgroundColor) / 255f,
-					Color.green(mBackgroundColor) / 255f,
-					Color.blue(mBackgroundColor) / 255f,
-					Color.alpha(mBackgroundColor) / 255f);
-			mBackgroundColorChanged = false;
-		}
-
-		gl.glClear(GL10.GL_COLOR_BUFFER_BIT); // | GL10.GL_DEPTH_BUFFER_BIT);
+		gl.glClearColor(Color.red(mBackgroundColor) / 255f,
+				Color.green(mBackgroundColor) / 255f,
+				Color.blue(mBackgroundColor) / 255f,
+				Color.alpha(mBackgroundColor) / 255f);
+		gl.glClear(GL10.GL_COLOR_BUFFER_BIT);
 		gl.glLoadIdentity();
 
 		if (USE_PERSPECTIVE_PROJECTION) {
@@ -174,7 +164,6 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	 */
 	public void setBackgroundColor(int color) {
 		mBackgroundColor = color;
-		mBackgroundColorChanged = true;
 	}
 
 	/**
