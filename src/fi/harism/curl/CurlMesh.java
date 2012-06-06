@@ -463,7 +463,7 @@ public class CurlMesh {
 					v.mTexY *= mTextureRectFront.bottom;
 					v.mColor = mTexturePage.getColor(CurlPage.SIDE_FRONT);
 				} else {
-					v.mTexX = (1f - v.mTexX) * mTextureRectBack.right;
+					v.mTexX *= mTextureRectBack.right;
 					v.mTexY *= mTextureRectBack.bottom;
 					v.mColor = mTexturePage.getColor(CurlPage.SIDE_BACK);
 				}
@@ -768,7 +768,7 @@ public class CurlMesh {
 			tmp.set(mRectangle[i]);
 
 			if (mFlipTexture) {
-				tmp.mTexX = (1f - tmp.mTexX) * mTextureRectBack.right;
+				tmp.mTexX *= mTextureRectBack.right;
 				tmp.mTexY *= mTextureRectBack.bottom;
 				tmp.mColor = mTexturePage.getColor(CurlPage.SIDE_BACK);
 			} else {
