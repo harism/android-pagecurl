@@ -391,13 +391,10 @@ public class CurlMesh {
 
 				// We use local textureFront for flipping backside texture
 				// locally. Plus additionally if mesh is in flip texture mode,
-				// we'll make the procedure "backwards". Also, until this point,
-				// texture coordinates are within [0, 1] range so we'll adjust
-				// them to final texture coordinates too.
+				// we'll make the procedure "backwards".
 				if (textureFront != mFlipTexture) {
 					v.mColor = mTexturePage.getColor(CurlPage.SIDE_FRONT);
 				} else {
-					v.mTexX = (1f - v.mTexX);
 					v.mColor = mTexturePage.getColor(CurlPage.SIDE_BACK);
 				}
 
@@ -652,7 +649,6 @@ public class CurlMesh {
 			tmp.set(mRectangle[i]);
 
 			if (mFlipTexture) {
-				tmp.mTexX = (1f - tmp.mTexX);
 				tmp.mColor = mTexturePage.getColor(CurlPage.SIDE_BACK);
 			} else {
 				tmp.mColor = mTexturePage.getColor(CurlPage.SIDE_FRONT);
