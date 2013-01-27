@@ -65,46 +65,6 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	// Rect for render area.
 	private final RectF mViewRect = new RectF();
 	
-	// Shaders.
-	private final String SHADER_SHADOW_FRAGMENT =
-			"precision mediump float;\n" +
-			"varying vec4 vColor;\n" +
-			"void main() {\n" +
-			"  gl_FragColor = vColor;\n" +
-			"}\n";
-	private final String SHADER_SHADOW_VERTEX =
-			"uniform mat4 uProjectionM;\n" +
-			"attribute vec3 aPosition;\n" +
-			"attribute vec4 aColor;\n" +
-			"varying vec4 vColor;\n" +
-			"void main() {\n" +
-			"  gl_Position = uProjectionM * vec4(aPosition, 1.0);\n" +
-			"  vColor = aColor;\n" +
-			"}\n";
-	private final String SHADER_TEXTURE_FRAGMENT =
-			"precision mediump float;\n" +
-			"varying vec4 vColor;\n" +
-			"varying vec2 vTextureCoord;\n" +
-			"uniform sampler2D sTexture;\n" +
-			"void main() {\n" +
-			"  gl_FragColor = texture2D(sTexture, vTextureCoord);\n" +
-			"  gl_FragColor.rgb *= vColor.rgb;\n" +
-			"  gl_FragColor = mix(vColor, gl_FragColor, vColor.a);\n" +
-			"  gl_FragColor.a = 1.0;\n" +
-			"}\n";
-	private final String SHADER_TEXTURE_VERTEX =
-			"uniform mat4 uProjectionM;\n" +
-			"attribute vec3 aPosition;\n" +
-			"attribute vec4 aColor;\n" +
-			"attribute vec2 aTextureCoord;\n" +
-			"varying vec4 vColor;\n" +
-			"varying vec2 vTextureCoord;\n" +
-			"void main() {\n" +
-			"  gl_Position = uProjectionM * vec4(aPosition, 1.0);\n" +
-			"  vColor = aColor;\n" +
-			"  vTextureCoord = aTextureCoord;\n" +
-			"}\n";
-
 	/**
 	 * Basic constructor.
 	 */
@@ -178,8 +138,8 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		GLES20.glDisable(GLES20.GL_CULL_FACE);
 		
 		try {
-			mShaderShadow.setProgram(SHADER_SHADOW_VERTEX, SHADER_SHADOW_FRAGMENT);
-			mShaderTexture.setProgram(SHADER_TEXTURE_VERTEX, SHADER_TEXTURE_FRAGMENT);
+			mShaderShadow.setProgram(CurlStatic.SHADER_SHADOW_VERTEX, CurlStatic.SHADER_SHADOW_FRAGMENT);
+			mShaderTexture.setProgram(CurlStatic.SHADER_TEXTURE_VERTEX, CurlStatic.SHADER_TEXTURE_FRAGMENT);
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
