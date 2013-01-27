@@ -107,8 +107,87 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 				Color.alpha(mBackgroundColor) / 255f);
 		GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
-		for (int i = 0; i < mCurlMeshes.size(); ++i) {
-			mCurlMeshes.get(i).onDrawFrame(mShaderTexture, mShaderShadow);
+		for (CurlMesh mesh : mCurlMeshes) {
+
+			//
+			// Render drop shadow.
+			//
+
+			GLES20.glEnable(GLES20.GL_BLEND);
+			GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA,
+					GLES20.GL_ONE_MINUS_SRC_ALPHA);
+
+			mShaderShadow.useProgram();
+
+			GLES20.glVertexAttribPointer(mShaderShadow.getHandle("aPosition"),
+					3, GLES20.GL_FLOAT, false, 0, mesh.getShadowVertices());
+			GLES20.glEnableVertexAttribArray(mShaderShadow
+					.getHandle("aPosition"));
+
+			GLES20.glVertexAttribPointer(mShaderShadow.getHandle("aPenumbra"),
+					2, GLES20.GL_FLOAT, false, 0, mesh.getShadowPenumbra());
+			GLES20.glEnableVertexAttribArray(mShaderShadow
+					.getHandle("aPenumbra"));
+
+			GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0,
+					mesh.getDropShadowCount());
+
+			GLES20.glDisable(GLES20.GL_BLEND);
+
+			//
+			// Render page textures.
+			//
+
+			mShaderTexture.useProgram();
+
+			GLES20.glVertexAttribPointer(mShaderTexture.getHandle("aPosition"),
+					3, GLES20.GL_FLOAT, false, 0, mesh.getVertices());
+			GLES20.glEnableVertexAttribArray(mShaderTexture
+					.getHandle("aPosition"));
+			GLES20.glVertexAttribPointer(mShaderTexture.getHandle("aNormal"),
+					3, GLES20.GL_FLOAT, false, 0, mesh.getNormals());
+			GLES20.glEnableVertexAttribArray(mShaderTexture
+					.getHandle("aNormal"));
+			GLES20.glVertexAttribPointer(mShaderTexture.getHandle("aTexCoord"),
+					2, GLES20.GL_FLOAT, false, 0, mesh.getTexCoords());
+			GLES20.glEnableVertexAttribArray(mShaderTexture
+					.getHandle("aTexCoord"));
+
+			GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+			GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mesh.getTexture(true));
+			GLES20.glUniform1i(mShaderTexture.getHandle("sTextureFront"), 0);
+
+			GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
+			GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mesh.getTexture(false));
+			GLES20.glUniform1i(mShaderTexture.getHandle("sTextureBack"), 1);
+
+			GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0,
+					mesh.getVertexCount());
+
+			//
+			// Render self shadow.
+			//
+
+			GLES20.glEnable(GLES20.GL_BLEND);
+			GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA,
+					GLES20.GL_ONE_MINUS_SRC_ALPHA);
+
+			mShaderShadow.useProgram();
+
+			GLES20.glVertexAttribPointer(mShaderShadow.getHandle("aPosition"),
+					3, GLES20.GL_FLOAT, false, 0, mesh.getShadowVertices());
+			GLES20.glEnableVertexAttribArray(mShaderShadow
+					.getHandle("aPosition"));
+
+			GLES20.glVertexAttribPointer(mShaderShadow.getHandle("aPenumbra"),
+					2, GLES20.GL_FLOAT, false, 0, mesh.getShadowPenumbra());
+			GLES20.glEnableVertexAttribArray(mShaderShadow
+					.getHandle("aPenumbra"));
+
+			GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP,
+					mesh.getDropShadowCount(), mesh.getSelfShadowCount());
+
+			GLES20.glDisable(GLES20.GL_BLEND);
 		}
 	}
 

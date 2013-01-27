@@ -31,17 +31,35 @@ public class CurlPage {
 	public static final int SIDE_BOTH = 3;
 	public static final int SIDE_FRONT = 1;
 
+	private Bitmap mBitmapBack;
+	private Bitmap mBitmapFront;
+	private boolean mBitmapsChanged;
 	private int mColorBack;
 	private int mColorFront;
-	private Bitmap mTextureBack;
-	private Bitmap mTextureFront;
-	private boolean mTexturesChanged;
 
 	/**
 	 * Default constructor.
 	 */
 	public CurlPage() {
 		reset();
+	}
+
+	/**
+	 * Getter for bitmap.
+	 */
+	public Bitmap getBitmap(int side) {
+		switch (side) {
+		case SIDE_FRONT:
+			return mBitmapFront;
+		case SIDE_BACK:
+			return mBitmapBack;
+		default:
+			return null;
+		}
+	}
+
+	public boolean getBitmapsChanged() {
+		return mBitmapsChanged;
 	}
 
 	/**
@@ -57,48 +75,20 @@ public class CurlPage {
 	}
 
 	/**
-	 * Getter for textures.
-	 * 
-	 */
-	public Bitmap getTexture(int side) {
-		switch (side) {
-		case SIDE_FRONT:
-			return mTextureFront;
-		default:
-			return mTextureBack;
-		}
-	}
-
-	/**
-	 * Returns true if textures have changed.
-	 */
-	public boolean getTexturesChanged() {
-		return mTexturesChanged;
-	}
-
-	/**
-	 * Returns true if back siding texture exists and it differs from front
-	 * facing one.
-	 */
-	public boolean hasBackTexture() {
-		return !mTextureFront.equals(mTextureBack);
-	}
-
-	/**
 	 * Recycles and frees underlying Bitmaps.
 	 */
 	public void recycle() {
-		if (mTextureFront != null) {
-			mTextureFront.recycle();
+		if (mBitmapFront != null) {
+			mBitmapFront.recycle();
 		}
-		mTextureFront = Bitmap.createBitmap(1, 1, Bitmap.Config.RGB_565);
-		mTextureFront.eraseColor(mColorFront);
-		if (mTextureBack != null) {
-			mTextureBack.recycle();
+		mBitmapFront = Bitmap.createBitmap(1, 1, Bitmap.Config.RGB_565);
+		mBitmapFront.eraseColor(mColorFront);
+		if (mBitmapBack != null) {
+			mBitmapBack.recycle();
 		}
-		mTextureBack = Bitmap.createBitmap(1, 1, Bitmap.Config.RGB_565);
-		mTextureBack.eraseColor(mColorBack);
-		mTexturesChanged = false;
+		mBitmapBack = Bitmap.createBitmap(1, 1, Bitmap.Config.RGB_565);
+		mBitmapBack.eraseColor(mColorBack);
+		mBitmapsChanged = false;
 	}
 
 	/**
@@ -108,6 +98,41 @@ public class CurlPage {
 		mColorBack = Color.WHITE;
 		mColorFront = Color.WHITE;
 		recycle();
+		mBitmapsChanged = true;
+	}
+
+	/**
+	 * Setter for Bitmaps.
+	 */
+	public void setBitmap(Bitmap texture, int side) {
+		if (texture == null) {
+			texture = Bitmap.createBitmap(1, 1, Bitmap.Config.RGB_565);
+			if (side == SIDE_BACK) {
+				texture.eraseColor(mColorBack);
+			} else {
+				texture.eraseColor(mColorFront);
+			}
+		}
+		switch (side) {
+		case SIDE_FRONT:
+			if (mBitmapFront != null)
+				mBitmapFront.recycle();
+			mBitmapFront = texture;
+			break;
+		case SIDE_BACK:
+			if (mBitmapBack != null)
+				mBitmapBack.recycle();
+			mBitmapBack = texture;
+			break;
+		case SIDE_BOTH:
+			if (mBitmapFront != null)
+				mBitmapFront.recycle();
+			if (mBitmapBack != null)
+				mBitmapBack.recycle();
+			mBitmapFront = mBitmapBack = texture;
+			break;
+		}
+		mBitmapsChanged = true;
 	}
 
 	/**
@@ -125,40 +150,6 @@ public class CurlPage {
 			mColorFront = mColorBack = color;
 			break;
 		}
-	}
-
-	/**
-	 * Setter for textures.
-	 */
-	public void setTexture(Bitmap texture, int side) {
-		if (texture == null) {
-			texture = Bitmap.createBitmap(1, 1, Bitmap.Config.RGB_565);
-			if (side == SIDE_BACK) {
-				texture.eraseColor(mColorBack);
-			} else {
-				texture.eraseColor(mColorFront);
-			}
-		}
-		switch (side) {
-		case SIDE_FRONT:
-			if (mTextureFront != null)
-				mTextureFront.recycle();
-			mTextureFront = texture;
-			break;
-		case SIDE_BACK:
-			if (mTextureBack != null)
-				mTextureBack.recycle();
-			mTextureBack = texture;
-			break;
-		case SIDE_BOTH:
-			if (mTextureFront != null)
-				mTextureFront.recycle();
-			if (mTextureBack != null)
-				mTextureBack.recycle();
-			mTextureFront = mTextureBack = texture;
-			break;
-		}
-		mTexturesChanged = true;
 	}
 
 }

@@ -215,9 +215,9 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		// In case surface is recreated, let page meshes drop allocated texture
 		// ids and ask for new ones. There's no need to set textures here as
 		// onPageSizeChanged should be called later on.
-		mPageLeft.resetTexture();
-		mPageRight.resetTexture();
-		mPageCurl.resetTexture();
+		mPageLeft.resetTextures();
+		mPageRight.resetTextures();
+		mPageCurl.resetTextures();
 	}
 
 	@Override
@@ -551,7 +551,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 				}
 			}
 			if (mCurrentIndex < mPageProvider.getPageCount() - 1) {
-				updatePage(mPageRight.getTexturePage(), mCurrentIndex + 1);
+				updatePage(mPageRight.getPage(), mCurrentIndex + 1);
 				mPageRight.setRect(mRenderer
 						.getPageRect(CurlRenderer.PAGE_RIGHT));
 				mPageRight.setFlipTexture(false);
@@ -584,7 +584,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			mPageCurl = curl;
 
 			if (mCurrentIndex > 1) {
-				updatePage(mPageLeft.getTexturePage(), mCurrentIndex - 2);
+				updatePage(mPageLeft.getPage(), mCurrentIndex - 2);
 				mPageLeft.setFlipTexture(true);
 				mPageLeft
 						.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
@@ -729,14 +729,14 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		}
 
 		if (rightIdx >= 0 && rightIdx < mPageProvider.getPageCount()) {
-			updatePage(mPageRight.getTexturePage(), rightIdx);
+			updatePage(mPageRight.getPage(), rightIdx);
 			mPageRight.setFlipTexture(false);
 			mPageRight.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT));
 			mPageRight.reset();
 			mRenderer.addCurlMesh(mPageRight);
 		}
 		if (leftIdx >= 0 && leftIdx < mPageProvider.getPageCount()) {
-			updatePage(mPageLeft.getTexturePage(), leftIdx);
+			updatePage(mPageLeft.getPage(), leftIdx);
 			mPageLeft.setFlipTexture(true);
 			mPageLeft.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
 			mPageLeft.reset();
@@ -745,7 +745,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			}
 		}
 		if (curlIdx >= 0 && curlIdx < mPageProvider.getPageCount()) {
-			updatePage(mPageCurl.getTexturePage(), curlIdx);
+			updatePage(mPageCurl.getPage(), curlIdx);
 
 			if (mCurlState == CURL_RIGHT) {
 				mPageCurl.setFlipTexture(true);

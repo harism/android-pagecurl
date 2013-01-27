@@ -131,14 +131,14 @@ public class CurlActivity extends Activity {
 			// First case is image on front side, solid colored back.
 			case 0: {
 				Bitmap front = loadBitmap(width, height, 0);
-				page.setTexture(front, CurlPage.SIDE_FRONT);
+				page.setBitmap(front, CurlPage.SIDE_FRONT);
 				page.setColor(Color.rgb(180, 180, 180), CurlPage.SIDE_BACK);
 				break;
 			}
 			// Second case is image on back side, solid colored front.
 			case 1: {
 				Bitmap back = loadBitmap(width, height, 2);
-				page.setTexture(back, CurlPage.SIDE_BACK);
+				page.setBitmap(back, CurlPage.SIDE_BACK);
 				page.setColor(Color.rgb(127, 140, 180), CurlPage.SIDE_FRONT);
 				break;
 			}
@@ -146,8 +146,8 @@ public class CurlActivity extends Activity {
 			case 2: {
 				Bitmap front = loadBitmap(width, height, 1);
 				Bitmap back = loadBitmap(width, height, 3);
-				page.setTexture(front, CurlPage.SIDE_FRONT);
-				page.setTexture(back, CurlPage.SIDE_BACK);
+				page.setBitmap(front, CurlPage.SIDE_FRONT);
+				page.setBitmap(back, CurlPage.SIDE_BACK);
 				break;
 			}
 			// Fourth case is images on both sides - plus they are blend against
@@ -155,8 +155,8 @@ public class CurlActivity extends Activity {
 			case 3: {
 				Bitmap front = loadBitmap(width, height, 2);
 				Bitmap back = loadBitmap(width, height, 1);
-				page.setTexture(front, CurlPage.SIDE_FRONT);
-				page.setTexture(back, CurlPage.SIDE_BACK);
+				page.setBitmap(front, CurlPage.SIDE_FRONT);
+				page.setBitmap(back, CurlPage.SIDE_BACK);
 				page.setColor(Color.argb(127, 170, 130, 255),
 						CurlPage.SIDE_FRONT);
 				page.setColor(Color.rgb(255, 190, 150), CurlPage.SIDE_BACK);
@@ -166,7 +166,7 @@ public class CurlActivity extends Activity {
 			// scenario only one texture is used and shared for both sides.
 			case 4:
 				Bitmap front = loadBitmap(width, height, 0);
-				page.setTexture(front, CurlPage.SIDE_BOTH);
+				page.setBitmap(front, CurlPage.SIDE_BOTH);
 				page.setColor(Color.argb(127, 255, 255, 255),
 						CurlPage.SIDE_BACK);
 				break;
