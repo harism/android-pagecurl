@@ -47,7 +47,7 @@ public class CurlActivity extends Activity {
 		mCurlView.setPageProvider(new PageProvider());
 		mCurlView.setSizeChangedObserver(new SizeChangedObserver());
 		mCurlView.setCurrentIndex(index);
-		mCurlView.setBackgroundColor(0xFF202830);
+		mCurlView.setBackgroundColor(0xFFC0C0C0);
 
 		// This is something somewhat experimental. Before uncommenting next
 		// line, please see method comments in CurlView.
