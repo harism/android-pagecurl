@@ -1,5 +1,5 @@
 /*
-   Copyright 2012 Harri Smatt
+   Copyright 2013 Harri Smatt
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -111,7 +111,8 @@ public final class CurlShader {
 	 * @param fragmentSource
 	 *            String presentation for fragment shader
 	 */
-	public void setProgram(String vertexSource, String fragmentSource) throws Exception {
+	public void setProgram(String vertexSource, String fragmentSource)
+			throws Exception {
 		int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexSource);
 		int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER,
 				fragmentSource);

@@ -1,5 +1,5 @@
 /*
-   Copyright 2012 Harri Smatt
+   Copyright 2013 Harri Smatt
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -64,7 +64,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	private int mViewportWidth, mViewportHeight;
 	// Rect for render area.
 	private final RectF mViewRect = new RectF();
-	
+
 	/**
 	 * Basic constructor.
 	 */
@@ -102,9 +102,9 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		mObserver.onDrawFrame();
 
 		GLES20.glClearColor(Color.red(mBackgroundColor) / 255f,
-							Color.green(mBackgroundColor) / 255f,
-							Color.blue(mBackgroundColor) / 255f,
-							Color.alpha(mBackgroundColor) / 255f);
+				Color.green(mBackgroundColor) / 255f,
+				Color.blue(mBackgroundColor) / 255f,
+				Color.alpha(mBackgroundColor) / 255f);
 		GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
 		for (int i = 0; i < mCurlMeshes.size(); ++i) {
@@ -127,19 +127,23 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 
 		Matrix.orthoM(mProjectionMatrix, 0, -ratio, ratio, -1f, 1f, -10f, 10f);
 		mShaderTexture.useProgram();
-		GLES20.glUniformMatrix4fv(mShaderTexture.getHandle("uProjectionM"), 1, false, mProjectionMatrix, 0);
+		GLES20.glUniformMatrix4fv(mShaderTexture.getHandle("uProjectionM"), 1,
+				false, mProjectionMatrix, 0);
 		mShaderShadow.useProgram();
-		GLES20.glUniformMatrix4fv(mShaderShadow.getHandle("uProjectionM"), 1, false, mProjectionMatrix, 0);
+		GLES20.glUniformMatrix4fv(mShaderShadow.getHandle("uProjectionM"), 1,
+				false, mProjectionMatrix, 0);
 	}
 
 	@Override
 	public void onSurfaceCreated(GL10 unused, EGLConfig config) {
 		GLES20.glDisable(GLES20.GL_DEPTH_TEST);
 		GLES20.glDisable(GLES20.GL_CULL_FACE);
-		
+
 		try {
-			mShaderShadow.setProgram(CurlStatic.SHADER_SHADOW_VERTEX, CurlStatic.SHADER_SHADOW_FRAGMENT);
-			mShaderTexture.setProgram(CurlStatic.SHADER_TEXTURE_VERTEX, CurlStatic.SHADER_TEXTURE_FRAGMENT);
+			mShaderShadow.setProgram(CurlStatic.SHADER_SHADOW_VERTEX,
+					CurlStatic.SHADER_SHADOW_FRAGMENT);
+			mShaderTexture.setProgram(CurlStatic.SHADER_TEXTURE_VERTEX,
+					CurlStatic.SHADER_TEXTURE_FRAGMENT);
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}

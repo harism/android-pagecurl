@@ -1,5 +1,5 @@
 /*
-   Copyright 2012 Harri Smatt
+   Copyright 2013 Harri Smatt
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -19,14 +19,14 @@ package fi.harism.curl;
 public final class CurlStatic {
 
 	// Shaders.
-	
+
 	public static final String SHADER_SHADOW_FRAGMENT = ""
 			+ "precision mediump float;                                       \n"
 			+ "varying vec4 vColor;                                           \n"
 			+ "void main() {                                                  \n"
 			+ "  gl_FragColor = vColor;                                       \n"
 			+ "}                                                              \n";
-	
+
 	public static final String SHADER_SHADOW_VERTEX = ""
 			+ "uniform mat4 uProjectionM;                                     \n"
 			+ "attribute vec3 aPosition;                                      \n"
@@ -36,7 +36,7 @@ public final class CurlStatic {
 			+ "  gl_Position = uProjectionM * vec4(aPosition, 1.0);           \n"
 			+ "  vColor = aColor;                                             \n"
 			+ "}                                                              \n";
-	
+
 	public static final String SHADER_TEXTURE_FRAGMENT = ""
 			+ "precision mediump float;                                       \n"
 			+ "varying vec4 vColor;                                           \n"
@@ -48,7 +48,7 @@ public final class CurlStatic {
 			+ "  gl_FragColor = mix(vColor, gl_FragColor, vColor.a);          \n"
 			+ "  gl_FragColor.a = 1.0;                                        \n"
 			+ "}                                                              \n";
-	
+
 	public static final String SHADER_TEXTURE_VERTEX = ""
 			+ "uniform mat4 uProjectionM;                                     \n"
 			+ "attribute vec3 aPosition;                                      \n"
@@ -61,5 +61,5 @@ public final class CurlStatic {
 			+ "  vColor = aColor;                                             \n"
 			+ "  vTextureCoord = aTextureCoord;                               \n"
 			+ "}                                                              \n";
-	
+
 }
