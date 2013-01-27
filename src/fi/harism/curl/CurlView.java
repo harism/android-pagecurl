@@ -630,7 +630,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	private void updateCurlPos(PointerPosition pointerPos) {
 
 		// Default curl radius.
-		double radius = mRenderer.getPageRect(CURL_RIGHT).width() / 3;
+		double radius = mRenderer.getPageRect(CURL_RIGHT).width();
 		// TODO: This is not an optimal solution. Based on feedback received so
 		// far; pressure is not very accurate, it may be better not to map
 		// coefficient to range [0f, 1f] but something like [.2f, 1f] instead.
@@ -667,14 +667,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 			// Actual curl position calculation.
 			if (dist >= curlLen) {
 				double translate = (dist - curlLen) / 2;
-				if (mViewMode == SHOW_TWO_PAGES) {
-					mCurlPos.x -= mCurlDir.x * translate / dist;
-				} else {
-					float pageLeftX = mRenderer
-							.getPageRect(CurlRenderer.PAGE_RIGHT).left;
-					radius = Math.max(Math.min(mCurlPos.x - pageLeftX, radius),
-							0f);
-				}
+				mCurlPos.x -= mCurlDir.x * translate / dist;
 				mCurlPos.y -= mCurlDir.y * translate / dist;
 			} else {
 				double angle = Math.PI * Math.sqrt(dist / curlLen);
