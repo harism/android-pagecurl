@@ -153,13 +153,47 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 			GLES20.glEnableVertexAttribArray(mShaderTexture
 					.getHandle("aTexCoord"));
 
-			GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-			GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mesh.getTexture(true));
-			GLES20.glUniform1i(mShaderTexture.getHandle("sTextureFront"), 0);
+			if (!mesh.getFlipTexture()) {
+				int color = mesh.getPage().getColor(CurlPage.SIDE_FRONT);
+				GLES20.glUniform4f(mShaderTexture.getHandle("uColorFront"),
+						Color.red(color) / 255f, Color.green(color) / 255f,
+						Color.blue(color) / 255f, Color.alpha(color) / 255f);
 
-			GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
-			GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mesh.getTexture(false));
-			GLES20.glUniform1i(mShaderTexture.getHandle("sTextureBack"), 1);
+				color = mesh.getPage().getColor(CurlPage.SIDE_BACK);
+				GLES20.glUniform4f(mShaderTexture.getHandle("uColorBack"),
+						Color.red(color) / 255f, Color.green(color) / 255f,
+						Color.blue(color) / 255f, Color.alpha(color) / 255f);
+
+				GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+				GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,
+						mesh.getTextures()[0]);
+				GLES20.glUniform1i(mShaderTexture.getHandle("sTextureFront"), 0);
+
+				GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
+				GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,
+						mesh.getTextures()[1]);
+				GLES20.glUniform1i(mShaderTexture.getHandle("sTextureBack"), 1);
+			} else {
+				int color = mesh.getPage().getColor(CurlPage.SIDE_BACK);
+				GLES20.glUniform4f(mShaderTexture.getHandle("uColorFront"),
+						Color.red(color) / 255f, Color.green(color) / 255f,
+						Color.blue(color) / 255f, Color.alpha(color) / 255f);
+
+				color = mesh.getPage().getColor(CurlPage.SIDE_FRONT);
+				GLES20.glUniform4f(mShaderTexture.getHandle("uColorBack"),
+						Color.red(color) / 255f, Color.green(color) / 255f,
+						Color.blue(color) / 255f, Color.alpha(color) / 255f);
+
+				GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+				GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,
+						mesh.getTextures()[0]);
+				GLES20.glUniform1i(mShaderTexture.getHandle("sTextureFront"), 1);
+
+				GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
+				GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,
+						mesh.getTextures()[1]);
+				GLES20.glUniform1i(mShaderTexture.getHandle("sTextureBack"), 0);
+			}
 
 			GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0,
 					mesh.getVertexCount());

@@ -44,16 +44,16 @@ public class CurlMesh {
 	private Array<ShadowVertex> mArrShadowTempVertices;
 	private Array<Vertex> mArrTempVertices;
 
+	// Buffers for feeding rasterizer.
 	private FloatBuffer mBufNormals;
 	private FloatBuffer mBufShadowPenumbra;
-	// Buffers for feeding rasterizer.
 	private FloatBuffer mBufShadowVertices;
 	private FloatBuffer mBufTexCoords;
 	private FloatBuffer mBufVertices;
 
+	// Counter values.
 	private int mCountShadowDrop;
 	private int mCountShadowSelf;
-
 	private int mCountVertices;
 
 	// Boolean for 'flipping' texture sideways.
@@ -61,7 +61,9 @@ public class CurlMesh {
 	// Maximum number of split lines used for creating a curl.
 	private int mMaxCurlSplits;
 
+	// Page instance.
 	private final CurlPage mPage = new CurlPage();
+
 	// Bounding rectangle for this mesh. mRectagle[0] = top-left corner,
 	// mRectangle[1] = bottom-left, mRectangle[2] = top-right and mRectangle[3]
 	// bottom-right.
@@ -163,7 +165,7 @@ public class CurlMesh {
 	 * @param radius
 	 *            Radius of curl.
 	 */
-	public synchronized void curl(PointF curlPos, PointF curlDir, double radius) {
+	public void curl(PointF curlPos, PointF curlDir, double radius) {
 
 		mBufVertices.position(0);
 		mBufTexCoords.position(0);
@@ -449,6 +451,13 @@ public class CurlMesh {
 	}
 
 	/**
+	 * Getter for whether page should be flipped.
+	 */
+	public boolean getFlipTexture() {
+		return mFlipTexture;
+	}
+
+	/**
 	 * Calculates intersections for given scan line.
 	 */
 	private Array<Vertex> getIntersections(Array<Vertex> vertices,
@@ -524,7 +533,7 @@ public class CurlMesh {
 	/**
 	 * Getter for texture ids. Must be called from GL thread.
 	 */
-	public int getTexture(boolean frontFacing) {
+	public int[] getTextures() {
 
 		// First allocate texture if there is not one yet.
 		if (mTextureIds == null) {
@@ -555,10 +564,7 @@ public class CurlMesh {
 			mPage.recycle();
 		}
 
-		if (!mFlipTexture)
-			return frontFacing ? mTextureIds[0] : mTextureIds[1];
-		else
-			return frontFacing ? mTextureIds[1] : mTextureIds[0];
+		return mTextureIds;
 	}
 
 	/**
@@ -579,7 +585,7 @@ public class CurlMesh {
 	 * Resets mesh to 'initial' state. Meaning this mesh will draw a plain
 	 * textured rectangle after call to this method.
 	 */
-	public synchronized void reset() {
+	public void reset() {
 		mBufVertices.position(0);
 		mBufTexCoords.position(0);
 		mBufNormals.position(0);
@@ -602,14 +608,14 @@ public class CurlMesh {
 	 * method does not release previous texture id, only makes sure new one is
 	 * requested on next render.
 	 */
-	public synchronized void resetTextures() {
+	public void resetTextures() {
 		mTextureIds = null;
 	}
 
 	/**
 	 * If true, flips texture sideways.
 	 */
-	public synchronized void setFlipTexture(boolean flipTexture) {
+	public void setFlipTexture(boolean flipTexture) {
 		mFlipTexture = flipTexture;
 		if (flipTexture) {
 			setTexCoords(1f, 0f, 0f, 1f);
@@ -635,8 +641,7 @@ public class CurlMesh {
 	/**
 	 * Sets texture coordinates to mRectangle vertices.
 	 */
-	private synchronized void setTexCoords(float left, float top, float right,
-			float bottom) {
+	private void setTexCoords(float left, float top, float right, float bottom) {
 		mRectangle[0].mTexX = left;
 		mRectangle[0].mTexY = top;
 		mRectangle[1].mTexX = left;

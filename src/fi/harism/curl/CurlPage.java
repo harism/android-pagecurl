@@ -95,8 +95,8 @@ public class CurlPage {
 	 * Resets this CurlPage into its initial state.
 	 */
 	public void reset() {
-		mColorBack = Color.WHITE;
-		mColorFront = Color.WHITE;
+		mColorBack = Color.TRANSPARENT;
+		mColorFront = Color.TRANSPARENT;
 		recycle();
 		mBitmapsChanged = true;
 	}
