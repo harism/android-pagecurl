@@ -145,6 +145,9 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	public void onDrawFrame() {
 		// We are not animating.
 		if (mAnimate == false) {
+			if (mCurlState != CURL_NONE) {
+				updateCurlPos(mPointerPos);
+			}
 			return;
 		}
 
@@ -321,8 +324,6 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 		case MotionEvent.ACTION_MOVE: {
 			if (mAnimate) {
 				mAnimationTarget.set(mPointerPos.mPos);
-			} else {
-				updateCurlPos(mPointerPos);
 			}
 			break;
 		}

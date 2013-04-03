@@ -78,7 +78,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	/**
 	 * Adds CurlMesh to this renderer.
 	 */
-	public synchronized void addCurlMesh(CurlMesh mesh) {
+	public void addCurlMesh(CurlMesh mesh) {
 		removeCurlMesh(mesh);
 		mCurlMeshes.add(mesh);
 	}
@@ -97,7 +97,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	}
 
 	@Override
-	public synchronized void onDrawFrame(GL10 unused) {
+	public void onDrawFrame(GL10 unused) {
 
 		mObserver.onDrawFrame();
 
@@ -186,13 +186,13 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 
 				GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
 				GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,
-						mesh.getTextures()[0]);
-				GLES20.glUniform1i(mShaderTexture.getHandle("sTextureFront"), 1);
+						mesh.getTextures()[1]);
+				GLES20.glUniform1i(mShaderTexture.getHandle("sTextureFront"), 0);
 
 				GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
 				GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,
-						mesh.getTextures()[1]);
-				GLES20.glUniform1i(mShaderTexture.getHandle("sTextureBack"), 0);
+						mesh.getTextures()[0]);
+				GLES20.glUniform1i(mShaderTexture.getHandle("sTextureBack"), 1);
 			}
 
 			GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0,
@@ -245,13 +245,13 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 		mShaderShadow.useProgram();
 		GLES20.glUniformMatrix4fv(mShaderShadow.getHandle("uProjectionM"), 1,
 				false, mProjectionMatrix, 0);
+
+		GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+		GLES20.glDisable(GLES20.GL_CULL_FACE);
 	}
 
 	@Override
 	public void onSurfaceCreated(GL10 unused, EGLConfig config) {
-		GLES20.glDisable(GLES20.GL_DEPTH_TEST);
-		GLES20.glDisable(GLES20.GL_CULL_FACE);
-
 		try {
 			mShaderShadow.setProgram(CurlStatic.SHADER_SHADOW_VERTEX,
 					CurlStatic.SHADER_SHADOW_FRAGMENT);
@@ -267,7 +267,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	/**
 	 * Removes CurlMesh from this renderer.
 	 */
-	public synchronized void removeCurlMesh(CurlMesh mesh) {
+	public void removeCurlMesh(CurlMesh mesh) {
 		while (mCurlMeshes.remove(mesh))
 			;
 	}
@@ -283,8 +283,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	 * Set margins or padding. Note: margins are proportional. Meaning a value
 	 * of .1f will produce a 10% margin.
 	 */
-	public synchronized void setMargins(float left, float top, float right,
-			float bottom) {
+	public void setMargins(float left, float top, float right, float bottom) {
 		mMargins.left = left;
 		mMargins.top = top;
 		mMargins.right = right;
@@ -296,7 +295,7 @@ public class CurlRenderer implements GLSurfaceView.Renderer {
 	 * Sets visible page count to one or two. Should be either SHOW_ONE_PAGE or
 	 * SHOW_TWO_PAGES.
 	 */
-	public synchronized void setViewMode(int viewmode) {
+	public void setViewMode(int viewmode) {
 		if (viewmode == SHOW_ONE_PAGE) {
 			mViewMode = viewmode;
 			updatePageRects();
