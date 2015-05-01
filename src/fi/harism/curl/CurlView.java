@@ -127,6 +127,7 @@ public class CurlView extends GLSurfaceView implements View.OnTouchListener,
 	private void init(Context ctx) {
 		mRenderer = new CurlRenderer(this);
 		setEGLContextClientVersion(2);
+		setEGLConfigChooser(new MultiSampleConfigChooser());
 		setRenderer(mRenderer);
 		setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 		setOnTouchListener(this);
