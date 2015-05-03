@@ -32,6 +32,8 @@ import android.os.Bundle;
  */
 public class CurlActivity extends Activity {
 
+    private static String CURRENT_INDEX_KEY = "CURRENT_INDEX_KEY";
+
 	private CurlView mCurlView;
 
 	@Override
@@ -39,10 +41,8 @@ public class CurlActivity extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
 
-		int index = 0;
-		if (getLastNonConfigurationInstance() != null) {
-			index = (Integer) getLastNonConfigurationInstance();
-		}
+		int index = savedInstanceState == null ? 0 : savedInstanceState.getInt(CURRENT_INDEX_KEY);
+
 		mCurlView = (CurlView) findViewById(R.id.curl);
 		mCurlView.setPageProvider(new PageProvider());
 		mCurlView.setSizeChangedObserver(new SizeChangedObserver());
@@ -66,12 +66,14 @@ public class CurlActivity extends Activity {
 		mCurlView.onResume();
 	}
 
-	@Override
-	public Object onRetainNonConfigurationInstance() {
-		return mCurlView.getCurrentIndex();
-	}
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        outState.putInt(CURRENT_INDEX_KEY, mCurlView.getCurrentIndex());
 
-	/**
+        super.onSaveInstanceState(outState);
+    }
+
+    /**
 	 * Bitmap provider.
 	 */
 	private class PageProvider implements CurlView.PageProvider {
