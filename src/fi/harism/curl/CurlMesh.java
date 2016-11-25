@@ -100,6 +100,8 @@ public class CurlMesh {
 	private int mVerticesCountBack;
 	private int mVerticesCountFront;
 
+	private static final int EDGE_COORDS_PENUMBRA_COUNT = 5;
+
 	/**
 	 * Constructor for mesh object.
 	 * 
@@ -123,12 +125,12 @@ public class CurlMesh {
 
 		if (DRAW_SHADOW) {
 			mArrSelfShadowVertices = new Array<ShadowVertex>(
-					(mMaxCurlSplits + 2) * 2);
+					(mMaxCurlSplits + 2 + EDGE_COORDS_PENUMBRA_COUNT) * 2);
 			mArrDropShadowVertices = new Array<ShadowVertex>(
-					(mMaxCurlSplits + 2) * 2);
+					(mMaxCurlSplits + 2 + EDGE_COORDS_PENUMBRA_COUNT) * 2);
 			mArrTempShadowVertices = new Array<ShadowVertex>(
-					(mMaxCurlSplits + 2) * 2);
-			for (int i = 0; i < (mMaxCurlSplits + 2) * 2; ++i) {
+					(mMaxCurlSplits + 2 + EDGE_COORDS_PENUMBRA_COUNT) * 2);
+			for (int i = 0; i < (mMaxCurlSplits + 2 + EDGE_COORDS_PENUMBRA_COUNT) * 2; ++i) {
 				mArrTempShadowVertices.add(new ShadowVertex());
 			}
 		}
@@ -175,7 +177,7 @@ public class CurlMesh {
 		mBufColors.position(0);
 
 		if (DRAW_SHADOW) {
-			int maxShadowVerticesCount = (mMaxCurlSplits + 2) * 2 * 2;
+			int maxShadowVerticesCount = (mMaxCurlSplits + 2 + EDGE_COORDS_PENUMBRA_COUNT) * 2 * 2;
 			ByteBuffer scbb = ByteBuffer
 					.allocateDirect(maxShadowVerticesCount * 4 * 4);
 			scbb.order(ByteOrder.nativeOrder());
@@ -487,15 +489,49 @@ public class CurlMesh {
 				}
 				// Self shadow is cast partly over mesh.
 				if (DRAW_SHADOW && v.mPosZ > radius) {
-					ShadowVertex sv = mArrTempShadowVertices.remove(0);
-					sv.mPosX = v.mPosX;
-					sv.mPosY = v.mPosY;
-					sv.mPosZ = v.mPosZ;
-					sv.mPenumbraX = ((v.mPosZ - radius) / 3) * v.mPenumbraX;
-					sv.mPenumbraY = ((v.mPosZ - radius) / 3) * v.mPenumbraY;
-					sv.mPenumbraColor = (v.mPosZ - radius) / (2 * radius);
-					int idx = (mArrSelfShadowVertices.size() + 1) / 2;
-					mArrSelfShadowVertices.add(idx, sv);
+					if(i == mArrScanLines.size() - 1 && mArrOutputVertices.size() == 0){
+                        double completeRotateCurlAngle = Math.PI / 2;
+
+                        double halfAngle = completeRotateCurlAngle / 2;
+
+                        double vPenumbraX = ((v.mPosZ - radius) / 3) * v.mPenumbraX;
+                        double vPenumbraY = ((v.mPosZ - radius) / 3) * v.mPenumbraY;
+                        double penumbraColor = (v.mPosZ - radius) / (2 * radius);
+
+                        double angle = Math.atan2(vPenumbraY, vPenumbraX);
+                        double angleStart = angle + halfAngle;
+                        double angleStep = completeRotateCurlAngle / EDGE_COORDS_PENUMBRA_COUNT;
+
+                        double distance = Math.sqrt(vPenumbraX * vPenumbraX + vPenumbraY * vPenumbraY);
+
+                        int idx = (mArrSelfShadowVertices.size() + 1) / 2;
+
+                        for(int j = 0; j < EDGE_COORDS_PENUMBRA_COUNT; j++){
+                            ShadowVertex sv = mArrTempShadowVertices.remove(0);
+                            double a = angleStart - (angleStep * j);
+                            double penumbraX = Math.cos(a) * distance;
+                            double penumbraY = Math.sin(a) * distance;
+
+                            sv.mPosX = v.mPosX;
+                            sv.mPosY = v.mPosY;
+                            sv.mPosZ = v.mPosZ;
+                            sv.mPenumbraX = penumbraX;
+                            sv.mPenumbraY = penumbraY;
+                            sv.mPenumbraColor = penumbraColor;
+
+                            mArrSelfShadowVertices.add(idx + j, sv);
+                        }
+                    }else{
+                        ShadowVertex sv = mArrTempShadowVertices.remove(0);
+                        sv.mPosX = v.mPosX;
+                        sv.mPosY = v.mPosY;
+                        sv.mPosZ = v.mPosZ;
+                        sv.mPenumbraX = ((v.mPosZ - radius) / 3) * v.mPenumbraX;
+                        sv.mPenumbraY = ((v.mPosZ - radius) / 3) * v.mPenumbraY;
+                        sv.mPenumbraColor = (v.mPosZ - radius) / (2 * radius);
+                        int idx = (mArrSelfShadowVertices.size() + 1) / 2;
+                        mArrSelfShadowVertices.add(idx, sv);
+                    }
 				}
 			}
 
