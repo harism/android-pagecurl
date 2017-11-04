@@ -1,1 +1,1 @@
-include  ':app', ':pageCurl'
+include  ':sample', ':pageCurl'
